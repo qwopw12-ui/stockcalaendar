@@ -186,7 +186,7 @@ body.vlock .tools .chip,body.vlock .ipobar{display:none}
 .mini .lk .ln{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .mini .lk .lp{font-weight:800;flex-shrink:0}
 .mini .lk.big{background:#ffe3e5;color:#b00018}
-.lhead,.lrow{display:grid;grid-template-columns:1fr 110px 60px;gap:8px;padding:9px 18px;font-size:13px;align-items:center}
+.lhead,.lrow{display:grid;grid-template-columns:1fr 110px;gap:8px;padding:9px 18px;font-size:13px;align-items:center}
 .lhead{color:var(--sub);font-size:12px;border-bottom:1px solid var(--line)}
 .lrow{border-bottom:1px solid #f0f1f4}
 .lrow span{text-align:right}.lhead span{text-align:right}
@@ -198,7 +198,7 @@ body.vlock .tools .chip,body.vlock .ipobar{display:none}
   .lcnt{display:none}
   .mob .mlk{font-size:10px;font-weight:800;color:#6d28d9}
   .mob .mlb{font-size:8.5px;font-weight:800;color:#fff;background:#c40018;border-radius:3px;padding:0 2px}
-  .lhead,.lrow{grid-template-columns:1fr 92px 48px;padding:9px 14px}
+  .lhead,.lrow{grid-template-columns:1fr 92px;padding:9px 14px}
 }
 </style>
 </head>
@@ -292,6 +292,7 @@ const SINSVG='<svg class="sin" width="13" height="13" viewBox="0 0 15 15"><circl
 let VIEW='main';
 const isLock=t=>/보호예수 해제/.test(t);
 const lockInfo=it=>{const m=(it.c||'').match(/([\d,]+)주\(([\d.]+)%\)/);return {name:it.t.replace(/\s*보호예수 해제.*/,''),sh:m?m[1]:'',pct:m?parseFloat(m[2]):0}};
+const manTxt=sh=>{const n=parseInt(String(sh).replace(/,/g,''))||0;return n>=10000?`${Math.floor(n/10000).toLocaleString()}만주`:`${n.toLocaleString()}주`};
 const pctTxt=p=>(Math.round(p*100)/100).toString().replace(/\.0+$/,'');
 const ipoKey=t=>{const m=t.match(/^(.+?) 신규 상장/);return m&&DATA.IPO[m[1]]?m[1]:null};
 const isIpo=t=>/신규 상장|공모청약|상장\(|수요예측|보호예수|스팩/.test(t);
@@ -320,11 +321,11 @@ function renderGrid(){
     const dow=(FIRST_DOW+d-1)%7;const day=byDay[d];
     const hl0=HOL[hkey(d)]||[];
     if(VIEW==='lock'){
-      const L=(day?day.items.filter(x=>isLock(x.t)&&pass(x)):[]).map(lockInfo).sort((a,b)=>b.pct-a.pct);
-      const lm=L.map(x=>`<div class="lk ${x.pct>=10?'big':''}" title="${esc(x.name)} ${x.sh}주(${pctTxt(x.pct)}%)"><span class="ln">${esc(x.name)}</span><span class="lp">${pctTxt(x.pct)}%</span></div>`).join('');
+      const L=(day?day.items.filter(x=>isLock(x.t)&&pass(x)):[]).map(lockInfo).sort((a,b)=>parseInt(b.sh.replace(/,/g,''))-parseInt(a.sh.replace(/,/g,'')));
+      const lm=L.map(x=>`<div class="lk ${x.pct>=10?'big':''}" title="${esc(x.name)} ${x.sh}주"><span class="ln">${esc(x.name)}</span><span class="lp">${manTxt(x.sh)}</span></div>`).join('');
       const hb0=hl0.map(x=>`<span class="hb ${x[0]}" title="${esc(x[2])}">${esc(x[1])}</span>`).join('');
       h+=`<div class="cell ${hl0.some(x=>x[0]==='kr')?'off':''} ${dow===0?'sun':''} ${dow===6?'sat':''} ${d===sel?'sel':''}" data-d="${d}">
-      <div class="num"><span>${d}${HNAME[hkey(d)]?`<em class="hname">${HNAME[hkey(d)]}</em>`:''}</span><span>${L.length?`<span class="lcnt">🔓${L.length}</span>`:''}</span></div><div class="mini">${lm}</div>${hb0?`<div class="hbs">${hb0}</div>`:''}<div class="mob">${L.length?`<span class="mlk">🔓${L.length}</span>`:''}${L.some(x=>x.pct>=10)?'<span class="mlb">10%↑</span>':''}</div></div>`;
+      <div class="num"><span>${d}${HNAME[hkey(d)]?`<em class="hname">${HNAME[hkey(d)]}</em>`:''}</span><span>${L.length?`<span class="lcnt">🔓${L.length}</span>`:''}</span></div><div class="mini">${lm}</div>${hb0?`<div class="hbs">${hb0}</div>`:''}<div class="mob">${L.length?`<span class="mlk">🔓${L.length}</span>`:''}${L.some(x=>x.pct>=10)?'<span class="mlb">대량</span>':''}</div></div>`;
       continue;
     }
     const items=day?day.items.filter(pass):[];
@@ -349,13 +350,13 @@ function select(d){sel=d;renderGrid();renderList();}
 function renderList(){
   const day=byDay[sel];const dow='일월화수목금토'[(FIRST_DOW+sel-1)%7];
   if(VIEW==='lock'){
-    const L=(day?day.items.filter(x=>isLock(x.t)&&pass(x)):[]).map(x=>({...lockInfo(x),c:x.c})).sort((a,b)=>b.pct-a.pct);
+    const L=(day?day.items.filter(x=>isLock(x.t)&&pass(x)):[]).map(x=>({...lockInfo(x),c:x.c})).sort((a,b)=>parseInt(b.sh.replace(/,/g,''))-parseInt(a.sh.replace(/,/g,'')));
     document.getElementById('dayTitle').innerHTML=`${MONTH}월 ${sel}일 (${dow}) 보호예수 해제<small>${L.length}종목</small>`;
     const hl=HOL[hkey(sel)]||[];
     const notice=hl.map(x=>`<div class="hnote ${x[0]}"><b>${esc(x[1])}</b> ${esc(x[2])}</div>`).join('');
     const box=document.getElementById('list');
     if(!L.length){box.innerHTML=notice+'<div class="empty-msg">이날 보호예수 해제 일정이 없어요.</div>';return}
-    box.innerHTML=notice+`<div class="lhead"><span>종목</span><span>해제 주식수</span><span>비율</span></div>`+L.map(x=>`<div class="lrow ${x.pct>=10?'big':''}"><b>${esc(x.name)}</b><span>${x.sh}주</span><span class="lpct">${pctTxt(x.pct)}%</span></div>`).join('')+`<div class="lnote">비율 = 상장주식수 대비 해제 물량 · 10% 이상은 빨간색 · 출처: 인포스탁</div>`;
+    box.innerHTML=notice+`<div class="lhead"><span>종목</span><span>해제 물량</span></div>`+L.map(x=>`<div class="lrow ${x.pct>=10?'big':''}"><b>${esc(x.name)}</b><span class="lpct">${manTxt(x.sh)}</span></div>`).join('')+`<div class="lnote">빨간색 = 상장주식수 대비 해제 물량이 많은 종목(10% 이상) · 출처: 인포스탁</div>`;
     return;
   }
   const items=day?day.items.filter(pass):[];
