@@ -217,6 +217,9 @@ const HOL={
 };
 const HNAME={'2026-12-25':'크리스마스'};
 const hkey=d=>`${cur}-${String(d).padStart(2,'0')}`;
+let SIN_Y=10.8;
+function calcSinY(){try{const c=document.createElement('canvas').getContext('2d');c.font='800 9.5px "Noto Sans KR", sans-serif';const m=c.measureText('신');if(m.actualBoundingBoxAscent){SIN_Y=+(7.5+(m.actualBoundingBoxAscent-m.actualBoundingBoxDescent)/2).toFixed(2)}}catch(e){}}
+calcSinY();
 const ipoKey=t=>{const m=t.match(/^(.+?) 신규 상장/);return m&&DATA.IPO[m[1]]?m[1]:null};
 const isIpo=t=>/신규 상장|공모청약|상장\(|수요예측|보호예수|스팩/.test(t);
 const KEYRE=/엔비디아|NVIDIA|애플(?!리)|Apple|마이크로소프트|Microsoft|구글|Google|알파벳|마이크론|Micron|샌디스크|SanDisk|AMD|인텔(?!리)|Intel(?!li)|블룸에너지|Bloom Energy|TSMC|ASML|브로드컴|Broadcom|코히런트|Coherent|루멘텀|Lumentum|코닝|Corning|FOMC|나스닥.{0,4}상장|CPI|PPI|소비자물가지수|생산자물가지수/i;
@@ -246,7 +249,7 @@ function renderGrid(){
     const ipos=items.filter(x=>ipoKey(x.t));
     const keys=items.filter(x=>!ipoKey(x.t)&&isKey(x.t));
     const his=items.filter(x=>!ipoKey(x.t)&&!isKey(x.t)&&x.h);
-    let mini=ipos.map(x=>`<div class="i"><svg class="sin" width="15" height="15" viewBox="0 0 15 15" aria-label="신규상장"><circle cx="7.5" cy="7.5" r="7.5" fill="#1f9d47"/><text x="7.5" y="7.5" text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="800" fill="#fff" font-family="Noto Sans KR,sans-serif">신</text></svg><span class="it">${esc(x.t.replace(' 신규 상장',''))} 상장</span></div>`).join('');
+    let mini=ipos.map(x=>`<div class="i"><svg class="sin" width="15" height="15" viewBox="0 0 15 15" aria-label="신규상장"><circle cx="7.5" cy="7.5" r="7.5" fill="#1f9d47"/><text x="7.5" y="${SIN_Y}" text-anchor="middle" font-size="9.5" font-weight="800" fill="#fff" font-family="Noto Sans KR,sans-serif">신</text></svg><span class="it">${esc(x.t.replace(' 신규 상장',''))} 상장</span></div>`).join('');
     mini+=keys.map(x=>`<div class="k" title="${esc(x.t)}">🔥 ${esc(x.t)}</div>`).join('');
     mini+=his.map(x=>`<div class="h" title="${esc(x.t)}">${esc(x.t)}</div>`).join('');
     const more=items.length-ipos.length-keys.length-his.length;
@@ -321,6 +324,7 @@ function goMonth(k,day){loadMonth(k);select(day||(cur===todayKey?today.getDate()
 document.getElementById('prevM').onclick=()=>{const i=MKEYS.indexOf(cur);if(i>0)goMonth(MKEYS[i-1])};
 document.getElementById('nextM').onclick=()=>{const i=MKEYS.indexOf(cur);if(i<MKEYS.length-1)goMonth(MKEYS[i+1])};
 const msel=document.getElementById('msel');MKEYS.forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k.replace('-','.');msel.appendChild(o)});msel.onchange=()=>goMonth(msel.value);
+try{document.fonts&&document.fonts.ready.then(()=>{const o=SIN_Y;calcSinY();if(o!==SIN_Y&&cur){renderGrid()}})}catch(e){}
 {const h=(location.hash||'').replace('#m','');goMonth(MKEYS.includes(h)?h:(MKEYS.includes(todayKey)?todayKey:MKEYS[0]));}
 </script>
 </body>
