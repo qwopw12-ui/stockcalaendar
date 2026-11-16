@@ -136,7 +136,7 @@ main{display:grid;grid-template-columns:900px minmax(320px,1fr);gap:16px;padding
 
 .hname{font-style:normal;font-size:11px;font-weight:700;color:var(--hi);margin-left:5px}
 
-.sin{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#1f9d47;color:#fff;font-size:9px;font-weight:800;margin-right:3px;line-height:1;flex-shrink:0}
+.sin{flex-shrink:0;margin-right:3px;display:block}
 .mini .i{display:flex;align-items:center}
 .mini .i .it{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 </style>
@@ -246,7 +246,7 @@ function renderGrid(){
     const ipos=items.filter(x=>ipoKey(x.t));
     const keys=items.filter(x=>!ipoKey(x.t)&&isKey(x.t));
     const his=items.filter(x=>!ipoKey(x.t)&&!isKey(x.t)&&x.h);
-    let mini=ipos.map(x=>`<div class="i"><span class="sin">신</span><span class="it">${esc(x.t.replace(' 신규 상장',''))} 상장</span></div>`).join('');
+    let mini=ipos.map(x=>`<div class="i"><svg class="sin" width="15" height="15" viewBox="0 0 15 15" aria-label="신규상장"><circle cx="7.5" cy="7.5" r="7.5" fill="#1f9d47"/><text x="7.5" y="7.5" text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="800" fill="#fff" font-family="Noto Sans KR,sans-serif">신</text></svg><span class="it">${esc(x.t.replace(' 신규 상장',''))} 상장</span></div>`).join('');
     mini+=keys.map(x=>`<div class="k" title="${esc(x.t)}">🔥 ${esc(x.t)}</div>`).join('');
     mini+=his.map(x=>`<div class="h" title="${esc(x.t)}">${esc(x.t)}</div>`).join('');
     const more=items.length-ipos.length-keys.length-his.length;
