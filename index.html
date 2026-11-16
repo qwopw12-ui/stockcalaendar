@@ -211,7 +211,7 @@ const HOL={
  '2027-01-04':[['kr2','국내 개장일','2027년 첫 거래일 — 개장식으로 통상 10시 개장 (거래소 공지 전)']],
  '2027-01-18':[['us','美 휴장','미국 증시 마틴 루터 킹 데이 휴장']]
 };
-const HNAME={};
+const HNAME={'2026-12-25':'크리스마스'};
 const hkey=d=>`${cur}-${String(d).padStart(2,'0')}`;
 const ipoKey=t=>{const m=t.match(/^(.+?) 신규 상장/);return m&&DATA.IPO[m[1]]?m[1]:null};
 const isIpo=t=>/신규 상장|공모청약|상장\(|수요예측|보호예수|스팩/.test(t);
