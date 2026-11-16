@@ -135,6 +135,8 @@ main{display:grid;grid-template-columns:900px minmax(320px,1fr);gap:16px;padding
 .cell.sun:hover{background:#ffeded}
 
 .hname{font-style:normal;font-size:11px;font-weight:700;color:var(--hi);margin-left:5px}
+
+.sin{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#1f9d47;color:#fff;font-size:9px;font-weight:800;margin-right:3px;vertical-align:-2px;line-height:1}
 </style>
 </head>
 <body>
@@ -242,7 +244,7 @@ function renderGrid(){
     const ipos=items.filter(x=>ipoKey(x.t));
     const keys=items.filter(x=>!ipoKey(x.t)&&isKey(x.t));
     const his=items.filter(x=>!ipoKey(x.t)&&!isKey(x.t)&&x.h);
-    let mini=ipos.map(x=>`<div class="i">● ${esc(x.t.replace(' 신규 상장',''))} 상장</div>`).join('');
+    let mini=ipos.map(x=>`<div class="i"><span class="sin">신</span>${esc(x.t.replace(' 신규 상장',''))} 상장</div>`).join('');
     mini+=keys.map(x=>`<div class="k" title="${esc(x.t)}">🔥 ${esc(x.t)}</div>`).join('');
     mini+=his.map(x=>`<div class="h" title="${esc(x.t)}">${esc(x.t)}</div>`).join('');
     const more=items.length-ipos.length-keys.length-his.length;
