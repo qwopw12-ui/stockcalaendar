@@ -300,7 +300,7 @@ const manTxt=sh=>{const n=parseInt(String(sh).replace(/,/g,''))||0;return n>=100
 const lockList=(d)=>{const day=byDay[d];const a=(day?day.items.filter(x=>isLock(x.t)&&pass(x)):[]).map(x=>({...lockInfo(x),kind:'보호예수',c:x.c}));
   const key=`${cur}-${String(d).padStart(2,'0')}`;
   (DATA.LOCK[key]||[]).forEach(([nm,per,sh,ld,rcp,rd])=>{if(query&&!(nm+' 의무확약').toLowerCase().includes(query))return;a.push({name:nm,sh,pct:0,kind:'기관확약 '+per,ld,rcp,rd})});
-  return a.sort((x,y)=>parseInt(y.sh.replace(/,/g,''))-parseInt(x.sh.replace(/,/g,'')));};
+  return a.sort((x,y)=>((x.kind!=='보호예수')-(y.kind!=='보호예수'))||parseInt(y.sh.replace(/,/g,''))-parseInt(x.sh.replace(/,/g,'')));};
 const pctTxt=p=>(Math.round(p*100)/100).toString().replace(/\.0+$/,'');
 const ipoKey=t=>{const m=t.match(/^(.+?) 신규 상장/);return m&&DATA.IPO[m[1]]?m[1]:null};
 const isIpo=t=>/신규 상장|공모청약|상장\(|수요예측|보호예수|스팩/.test(t);
