@@ -181,22 +181,20 @@ main{display:grid;grid-template-columns:900px minmax(320px,1fr);gap:16px;padding
 .vt:not(.on):hover{color:#6b7280}
 .vt+.vt{font-size:33px}
 body.vlock .tools .chip,body.vlock .ipobar{display:none}
-.lcnt{font-size:11px;font-weight:800;color:#6d28d9}
-.mini .lk{display:flex;justify-content:space-between;gap:4px;font-size:11px;color:#4c1d95;background:#f3efff;border-radius:4px;padding:0 4px;white-space:nowrap}
+.lcnt{font-size:11px;font-weight:800;color:#4b5563}
+.mini .lk{display:flex;justify-content:space-between;gap:4px;font-size:11px;color:#1f2329;background:#dcdfe4;border:1px solid #9aa1ab;border-radius:4px;padding:0 4px;white-space:nowrap}
 .mini .lk .ln{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .mini .lk .lp{font-weight:800;flex-shrink:0}
-.mini .lk.big{background:#ffe3e5;color:#b00018}
 .lhead,.lrow{display:grid;grid-template-columns:1fr 110px;gap:8px;padding:9px 18px;font-size:13px;align-items:center}
 .lhead{color:var(--sub);font-size:12px;border-bottom:1px solid var(--line)}
 .lrow{border-bottom:1px solid #f0f1f4}
 .lrow span{text-align:right}.lhead span{text-align:right}
-.lrow .lpct{font-weight:800;color:#4c1d95}
-.lrow.big b,.lrow.big .lpct{color:#c40018}
+.lrow .lpct{font-weight:800;color:#1f2329}
 .lnote{padding:10px 18px;color:var(--sub);font-size:11.5px}
 @media (max-width:600px){
   .vt,.vt+.vt{font-size:22px}.vtabs{gap:12px}
   .lcnt{display:none}
-  .mob .mlk{font-size:10px;font-weight:800;color:#6d28d9}
+  .mob .mlk{font-size:10px;font-weight:800;color:#4b5563}
   .mob .mlb{font-size:8.5px;font-weight:800;color:#fff;background:#c40018;border-radius:3px;padding:0 2px}
   .lhead,.lrow{grid-template-columns:1fr 92px;padding:9px 14px}
 }
@@ -325,7 +323,7 @@ function renderGrid(){
       const lm=L.map(x=>`<div class="lk ${x.pct>=10?'big':''}" title="${esc(x.name)} ${x.sh}주"><span class="ln">${esc(x.name)}</span><span class="lp">${manTxt(x.sh)}</span></div>`).join('');
       const hb0=hl0.map(x=>`<span class="hb ${x[0]}" title="${esc(x[2])}">${esc(x[1])}</span>`).join('');
       h+=`<div class="cell ${hl0.some(x=>x[0]==='kr')?'off':''} ${dow===0?'sun':''} ${dow===6?'sat':''} ${d===sel?'sel':''}" data-d="${d}">
-      <div class="num"><span>${d}${HNAME[hkey(d)]?`<em class="hname">${HNAME[hkey(d)]}</em>`:''}</span><span>${L.length?`<span class="lcnt">🔓${L.length}</span>`:''}</span></div><div class="mini">${lm}</div>${hb0?`<div class="hbs">${hb0}</div>`:''}<div class="mob">${L.length?`<span class="mlk">🔓${L.length}</span>`:''}${L.some(x=>x.pct>=10)?'<span class="mlb">대량</span>':''}</div></div>`;
+      <div class="num"><span>${d}${HNAME[hkey(d)]?`<em class="hname">${HNAME[hkey(d)]}</em>`:''}</span><span>${L.length?`<span class="lcnt">🔓${L.length}</span>`:''}</span></div><div class="mini">${lm}</div>${hb0?`<div class="hbs">${hb0}</div>`:''}<div class="mob">${L.length?`<span class="mlk">🔓${L.length}</span>`:''}</div></div>`;
       continue;
     }
     const items=day?day.items.filter(pass):[];
@@ -356,7 +354,7 @@ function renderList(){
     const notice=hl.map(x=>`<div class="hnote ${x[0]}"><b>${esc(x[1])}</b> ${esc(x[2])}</div>`).join('');
     const box=document.getElementById('list');
     if(!L.length){box.innerHTML=notice+'<div class="empty-msg">이날 보호예수 해제 일정이 없어요.</div>';return}
-    box.innerHTML=notice+`<div class="lhead"><span>종목</span><span>해제 물량</span></div>`+L.map(x=>`<div class="lrow ${x.pct>=10?'big':''}"><b>${esc(x.name)}</b><span class="lpct">${manTxt(x.sh)}</span></div>`).join('')+`<div class="lnote">빨간색 = 상장주식수 대비 해제 물량이 특히 많은 종목 · 출처: 인포스탁</div>`;
+    box.innerHTML=notice+`<div class="lhead"><span>종목</span><span>해제 물량</span></div>`+L.map(x=>`<div class="lrow ${x.pct>=10?'big':''}"><b>${esc(x.name)}</b><span class="lpct">${manTxt(x.sh)}</span></div>`).join('')+`<div class="lnote">출처: 인포스탁</div>`;
     return;
   }
   const items=day?day.items.filter(pass):[];
