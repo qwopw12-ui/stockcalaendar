@@ -239,7 +239,7 @@ const isKey=t=>/수능.*개장/.test(t)||JPRATE.test(t)||(KEYRE.test(t)&&!FOREIG
 const isEarn=t=>/실적발표/.test(t);
 const isGlobal=t=>/^(美|中|日|유로존|독일|영국|프랑스|대만|호주|캐나다|일본|중국|미국)|현지시간/.test(t);
 let filter='all',query='',sel=null;
-const today=new Date();const todayKey=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;const isToday=d=>cur===todayKey&&d===today.getDate();
+let today=new Date();const mkKey=t=>`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}`;let todayKey=mkKey(today);const isToday=d=>cur===todayKey&&d===today.getDate();
 function pass(it){
   if(filter==='hi'&&!it.h)return false;
   if(filter==='key'&&!isKey(it.t))return false;
@@ -335,7 +335,10 @@ document.getElementById('prevM').onclick=()=>{const i=MKEYS.indexOf(cur);if(i>0)
 document.getElementById('nextM').onclick=()=>{const i=MKEYS.indexOf(cur);if(i<MKEYS.length-1)goMonth(MKEYS[i+1])};
 const msel=document.getElementById('msel');MKEYS.forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k.replace('-','.');msel.appendChild(o)});msel.onchange=()=>goMonth(msel.value);
 try{document.fonts&&document.fonts.ready.then(()=>{const o=SIN_Y;calcSinY();if(o!==SIN_Y&&cur){renderGrid()}})}catch(e){}
-{const h=(location.hash||'').replace('#m','');goMonth(MKEYS.includes(h)?h:(MKEYS.includes(todayKey)?todayKey:MKEYS[0]));}
+{const h=(location.hash||'').replace('#m','');goMonth(MKEYS.includes(todayKey)?todayKey:(MKEYS.includes(h)?h:MKEYS[0]));}
+// 자정이 지나면(페이지를 켜둔 상태) 오늘 날짜로 자동 이동
+setInterval(()=>{const n=new Date();if(n.getDate()!==today.getDate()||n.getMonth()!==today.getMonth()){const was=(cur===todayKey&&sel===today.getDate());today=n;todayKey=mkKey(n);if(was&&MKEYS.includes(todayKey))goMonth(todayKey,n.getDate());}},60000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){const n=new Date();if(n.getDate()!==today.getDate()||n.getMonth()!==today.getMonth()){today=n;todayKey=mkKey(n);if(MKEYS.includes(todayKey))goMonth(todayKey,n.getDate());}}});
 </script>
 </body>
 </html>
