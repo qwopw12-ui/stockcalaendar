@@ -356,7 +356,7 @@ function renderList(){
     const notice=hl.map(x=>`<div class="hnote ${x[0]}"><b>${esc(x[1])}</b> ${esc(x[2])}</div>`).join('');
     const box=document.getElementById('list');
     if(!L.length){box.innerHTML=notice+'<div class="empty-msg">이날 보호예수 해제 일정이 없어요.</div>';return}
-    box.innerHTML=notice+`<div class="lhead"><span>종목</span><span>해제 물량</span></div>`+L.map(x=>`<div class="lrow ${x.pct>=10?'big':''}"><b>${esc(x.name)}</b><span class="lpct">${manTxt(x.sh)}</span></div>`).join('')+`<div class="lnote">빨간색 = 상장주식수 대비 해제 물량이 많은 종목(10% 이상) · 출처: 인포스탁</div>`;
+    box.innerHTML=notice+`<div class="lhead"><span>종목</span><span>해제 물량</span></div>`+L.map(x=>`<div class="lrow ${x.pct>=10?'big':''}"><b>${esc(x.name)}</b><span class="lpct">${manTxt(x.sh)}</span></div>`).join('')+`<div class="lnote">빨간색 = 상장주식수 대비 해제 물량이 특히 많은 종목 · 출처: 인포스탁</div>`;
     return;
   }
   const items=day?day.items.filter(pass):[];
