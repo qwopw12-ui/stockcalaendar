@@ -174,12 +174,38 @@ main{display:grid;grid-template-columns:900px minmax(320px,1fr);gap:16px;padding
   .side h2{padding:12px 14px 8px;font-size:17px}
   .item{padding:10px 14px}
 }
+
+.vtabs{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+.vt{cursor:pointer;color:#b3b8c0;transition:color .15s}
+.vt.on{color:var(--ink)}
+.vt:not(.on):hover{color:#6b7280}
+.vt+.vt{font-size:33px}
+body.vlock .tools .chip,body.vlock .ipobar{display:none}
+.lcnt{font-size:11px;font-weight:800;color:#6d28d9}
+.mini .lk{display:flex;justify-content:space-between;gap:4px;font-size:11px;color:#4c1d95;background:#f3efff;border-radius:4px;padding:0 4px;white-space:nowrap}
+.mini .lk .ln{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.mini .lk .lp{font-weight:800;flex-shrink:0}
+.mini .lk.big{background:#ffe3e5;color:#b00018}
+.lhead,.lrow{display:grid;grid-template-columns:1fr 110px 60px;gap:8px;padding:9px 18px;font-size:13px;align-items:center}
+.lhead{color:var(--sub);font-size:12px;border-bottom:1px solid var(--line)}
+.lrow{border-bottom:1px solid #f0f1f4}
+.lrow span{text-align:right}.lhead span{text-align:right}
+.lrow .lpct{font-weight:800;color:#4c1d95}
+.lrow.big b,.lrow.big .lpct{color:#c40018}
+.lnote{padding:10px 18px;color:var(--sub);font-size:11.5px}
+@media (max-width:600px){
+  .vt,.vt+.vt{font-size:22px}.vtabs{gap:12px}
+  .lcnt{display:none}
+  .mob .mlk{font-size:10px;font-weight:800;color:#6d28d9}
+  .mob .mlb{font-size:8.5px;font-weight:800;color:#fff;background:#c40018;border-radius:3px;padding:0 2px}
+  .lhead,.lrow{grid-template-columns:1fr 92px 48px;padding:9px 14px}
+}
 </style>
 </head>
 <body>
 <header>
   <div>
-    <h1>증시 주요일정</h1>
+    <div class="vtabs"><h1 class="vt on" data-v="main">증시 주요일정</h1><h1 class="vt" data-v="lock">보호예수 해제</h1></div>
   </div>
   <div class="tools">
     <input id="q" placeholder="종목·키워드 검색 (예: 실적, CPI, 엔비디아)">
@@ -263,6 +289,10 @@ let SIN_Y=10.8;
 function calcSinY(){try{const c=document.createElement('canvas').getContext('2d');c.font='800 9.5px "Noto Sans KR", sans-serif';const m=c.measureText('신');if(m.actualBoundingBoxAscent){SIN_Y=+(7.5+(m.actualBoundingBoxAscent-m.actualBoundingBoxDescent)/2).toFixed(2)}}catch(e){}}
 calcSinY();
 const SINSVG='<svg class="sin" width="13" height="13" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="7.5" fill="#1f9d47"/><text x="7.5" y="11" text-anchor="middle" font-size="9.5" font-weight="800" fill="#fff" font-family="Noto Sans KR,sans-serif">신</text></svg>';
+let VIEW='main';
+const isLock=t=>/보호예수 해제/.test(t);
+const lockInfo=it=>{const m=(it.c||'').match(/([\d,]+)주\(([\d.]+)%\)/);return {name:it.t.replace(/\s*보호예수 해제.*/,''),sh:m?m[1]:'',pct:m?parseFloat(m[2]):0}};
+const pctTxt=p=>(Math.round(p*100)/100).toString().replace(/\.0+$/,'');
 const ipoKey=t=>{const m=t.match(/^(.+?) 신규 상장/);return m&&DATA.IPO[m[1]]?m[1]:null};
 const isIpo=t=>/신규 상장|공모청약|상장\(|수요예측|보호예수|스팩/.test(t);
 const KEYRE=/엔비디아|NVIDIA|애플(?!리)|Apple|마이크로소프트|Microsoft|구글|Google|알파벳|마이크론|Micron|샌디스크|SanDisk|AMD|인텔(?!리)|Intel(?!li)|블룸에너지|Bloom Energy|TSMC|ASML|브로드컴|Broadcom|코히런트|Coherent|루멘텀|Lumentum|코닝|Corning|FOMC|나스닥.{0,4}상장|CPI|PPI|소비자물가지수|생산자물가지수/i;
@@ -288,6 +318,15 @@ function renderGrid(){
   for(let i=0;i<FIRST_DOW;i++)h+='<div class="cell empty"></div>';
   for(let d=1;d<=LAST;d++){
     const dow=(FIRST_DOW+d-1)%7;const day=byDay[d];
+    const hl0=HOL[hkey(d)]||[];
+    if(VIEW==='lock'){
+      const L=(day?day.items.filter(x=>isLock(x.t)&&pass(x)):[]).map(lockInfo).sort((a,b)=>b.pct-a.pct);
+      const lm=L.map(x=>`<div class="lk ${x.pct>=10?'big':''}" title="${esc(x.name)} ${x.sh}주(${pctTxt(x.pct)}%)"><span class="ln">${esc(x.name)}</span><span class="lp">${pctTxt(x.pct)}%</span></div>`).join('');
+      const hb0=hl0.map(x=>`<span class="hb ${x[0]}" title="${esc(x[2])}">${esc(x[1])}</span>`).join('');
+      h+=`<div class="cell ${hl0.some(x=>x[0]==='kr')?'off':''} ${dow===0?'sun':''} ${dow===6?'sat':''} ${d===sel?'sel':''}" data-d="${d}">
+      <div class="num"><span>${d}${HNAME[hkey(d)]?`<em class="hname">${HNAME[hkey(d)]}</em>`:''}</span><span>${L.length?`<span class="lcnt">🔓${L.length}</span>`:''}</span></div><div class="mini">${lm}</div>${hb0?`<div class="hbs">${hb0}</div>`:''}<div class="mob">${L.length?`<span class="mlk">🔓${L.length}</span>`:''}${L.some(x=>x.pct>=10)?'<span class="mlb">10%↑</span>':''}</div></div>`;
+      continue;
+    }
     const items=day?day.items.filter(pass):[];
     const ipos=items.filter(x=>ipoKey(x.t));
     const keys=items.filter(x=>!ipoKey(x.t)&&isKey(x.t));
@@ -309,6 +348,16 @@ function renderGrid(){
 function select(d){sel=d;renderGrid();renderList();}
 function renderList(){
   const day=byDay[sel];const dow='일월화수목금토'[(FIRST_DOW+sel-1)%7];
+  if(VIEW==='lock'){
+    const L=(day?day.items.filter(x=>isLock(x.t)&&pass(x)):[]).map(x=>({...lockInfo(x),c:x.c})).sort((a,b)=>b.pct-a.pct);
+    document.getElementById('dayTitle').innerHTML=`${MONTH}월 ${sel}일 (${dow}) 보호예수 해제<small>${L.length}종목</small>`;
+    const hl=HOL[hkey(sel)]||[];
+    const notice=hl.map(x=>`<div class="hnote ${x[0]}"><b>${esc(x[1])}</b> ${esc(x[2])}</div>`).join('');
+    const box=document.getElementById('list');
+    if(!L.length){box.innerHTML=notice+'<div class="empty-msg">이날 보호예수 해제 일정이 없어요.</div>';return}
+    box.innerHTML=notice+`<div class="lhead"><span>종목</span><span>해제 주식수</span><span>비율</span></div>`+L.map(x=>`<div class="lrow ${x.pct>=10?'big':''}"><b>${esc(x.name)}</b><span>${x.sh}주</span><span class="lpct">${pctTxt(x.pct)}%</span></div>`).join('')+`<div class="lnote">비율 = 상장주식수 대비 해제 물량 · 10% 이상은 빨간색 · 출처: 인포스탁</div>`;
+    return;
+  }
   const items=day?day.items.filter(pass):[];
   document.getElementById('dayTitle').innerHTML=`${MONTH}월 ${sel}일 (${dow})<small>${items.length}건</small>`;
   const L=document.getElementById('list');
@@ -366,7 +415,10 @@ function renderIpoBar(){
 function goMonth(k,day){loadMonth(k);select(day||(cur===todayKey?today.getDate():1));try{history.replaceState(null,'','#m'+k)}catch(e){}}
 document.getElementById('prevM').onclick=()=>{const i=MKEYS.indexOf(cur);if(i>0)goMonth(MKEYS[i-1])};
 document.getElementById('nextM').onclick=()=>{const i=MKEYS.indexOf(cur);if(i<MKEYS.length-1)goMonth(MKEYS[i+1])};
+function setView(v){VIEW=v;document.querySelectorAll('.vt').forEach(b=>b.classList.toggle('on',b.dataset.v===v));document.body.classList.toggle('vlock',v==='lock');document.title=(v==='lock'?'보호예수 해제 일정':'증시 주요일정');renderGrid();renderList();try{localStorage.setItem('view',v)}catch(e){}}
+document.querySelectorAll('.vt').forEach(b=>b.onclick=()=>setView(b.dataset.v));
 const msel=document.getElementById('msel');MKEYS.forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k.replace('-','.');msel.appendChild(o)});msel.onchange=()=>goMonth(msel.value);
+try{const v0=localStorage.getItem('view');if(v0==='lock'){VIEW='lock';setTimeout(()=>setView('lock'),0)}}catch(e){}
 try{document.fonts&&document.fonts.ready.then(()=>{const o=SIN_Y;calcSinY();if(o!==SIN_Y&&cur){renderGrid()}})}catch(e){}
 {const h=(location.hash||'').replace('#m','');goMonth(MKEYS.includes(todayKey)?todayKey:(MKEYS.includes(h)?h:MKEYS[0]));}
 // 자정이 지나면(페이지를 켜둔 상태) 오늘 날짜로 자동 이동
