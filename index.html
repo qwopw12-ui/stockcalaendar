@@ -250,7 +250,7 @@ function renderGrid(){
     const hl=HOL[hkey(d)]||[];const krOff=hl.some(x=>x[0]==='kr');
     const hb=hl.map(x=>`<span class="hb ${x[0]}" title="${esc(x[2])}">${esc(x[1])}</span>`).join('');
     h+=`<div class="cell ${krOff?'off':''} ${dow===0?'sun':''} ${dow===6?'sat':''} ${isToday(d)?'today':''} ${d===sel?'sel':''} ${keys.length?'haskey':''}" data-d="${d}">
-      <div class="num"><span>${d}${HNAME[hkey(d)]?`<em class="hname">${HNAME[hkey(d)]}</em>`:''}</span><span>${keys.length?`<span class="kcnt">🔥${keys.length}</span>`:''}${items.length?`<span class="cnt">${items.length}</span>`:''}</span></div><div class="mini">${mini}</div>${hb?`<div class="hbs">${hb}</div>`:''}</div>`;
+      <div class="num"><span>${d}${HNAME[hkey(d)]?`<em class="hname">${HNAME[hkey(d)]}</em>`:''}</span><span>${keys.length?`<span class="kcnt">🔥${keys.length}</span>`:''}</span></div><div class="mini">${mini}</div>${hb?`<div class="hbs">${hb}</div>`:''}</div>`;
   }
   const tail=(7-(FIRST_DOW+LAST)%7)%7;for(let i=0;i<tail;i++)h+='<div class="cell empty"></div>';
   g.innerHTML=h;
