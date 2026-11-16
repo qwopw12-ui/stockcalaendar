@@ -486,7 +486,7 @@ window.addEventListener('resize',()=>{if(VIEW==='flow')renderFlow()});
 function setView(v){VIEW=v;document.body.classList.toggle('vflow',v==='flow');if(v==='flow'){requestAnimationFrame(renderFlow)}document.querySelectorAll('.vt').forEach(b=>b.classList.toggle('on',b.dataset.v===v));document.body.classList.toggle('vlock',v==='lock');document.title=(v==='lock'?'보호예수 해제 일정':v==='flow'?'머니 플로우':'증시 주요일정');renderGrid();renderList();try{localStorage.setItem('view',v)}catch(e){}}
 document.querySelectorAll('.vt').forEach(b=>b.onclick=()=>setView(b.dataset.v));
 const msel=document.getElementById('msel');MKEYS.forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k.replace('-','.');msel.appendChild(o)});msel.onchange=()=>goMonth(msel.value);
-try{const v0=localStorage.getItem('view');if(v0==='lock'||v0==='flow'){VIEW=v0;setTimeout(()=>setView(v0),0)}}catch(e){}
+
 try{document.fonts&&document.fonts.ready.then(()=>{const o=SIN_Y;calcSinY();if(o!==SIN_Y&&cur){renderGrid()}})}catch(e){}
 {const h=(location.hash||'').replace('#m','');goMonth(MKEYS.includes(todayKey)?todayKey:(MKEYS.includes(h)?h:MKEYS[0]));}
 // 자정이 지나면(페이지를 켜둔 상태) 오늘 날짜로 자동 이동
