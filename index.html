@@ -200,6 +200,14 @@ body.vlock .tools .chip,body.vlock .ipobar{display:none}
 
 .mini .lk.hw{background:#bcd3f7;border:1px solid #bcd3f7;color:#1e3a8a}
 .lrow.hw{box-shadow:inset 3px 0 0 #bcd3f7}
+.lleg{display:none;position:absolute;right:14px;top:50%;transform:translateY(-50%);gap:12px;font-size:13px;font-weight:600;color:#4b5563}
+.vlock .lleg{display:flex}
+.vlock .calhead{position:relative}
+.lleg span{display:flex;align-items:center;gap:5px}
+.lleg i{width:16px;height:12px;border-radius:3px;display:inline-block}
+.lleg i.g{background:#dcdfe4;border:1px solid #9aa1ab}
+.lleg i.b{background:#bcd3f7;border:1px solid #bcd3f7}
+@media(max-width:600px){.vlock .calhead{flex-direction:column;gap:6px}.lleg{position:static;transform:none;font-size:12px}}
 .lkk{font-style:normal;font-size:9.5px;font-weight:700;color:#4b5563;margin-left:3px}
 .lkind{font-size:12px;color:#4b5563;display:flex;flex-direction:column;align-items:flex-end;text-align:right}
 .lkind small{font-size:10.5px;color:#9aa1ab}
@@ -229,6 +237,7 @@ body.vlock .tools .chip,body.vlock .ipobar{display:none}
         <label class="msel"><span id="mlabel"></span><span class="caret">▾</span><select id="msel" aria-label="월 선택"></select></label>
         <button class="sq" id="nextM" aria-label="다음 달">&rsaquo;</button>
       </div>
+      <div class="lleg"><span><i class="g"></i>보호예수</span><span><i class="b"></i>의무확약</span></div>
     </div>
     <div class="dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
     <div class="grid" id="grid"></div>
