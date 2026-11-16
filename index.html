@@ -199,6 +199,8 @@ body.vlock .tools .chip,body.vlock .ipobar{display:none}
   .lhead,.lrow{grid-template-columns:1fr 92px 62px;padding:9px 14px}
 }
 
+.mini .lk.hw{border:1.5px solid #2563eb}
+.lrow.hw{box-shadow:inset 3px 0 0 #2563eb}
 .lkk{font-style:normal;font-size:9.5px;font-weight:700;color:#4b5563;margin-left:3px}
 .lkind{font-size:12px;color:#4b5563;display:flex;flex-direction:column;align-items:flex-end;text-align:right}
 .lkind small{font-size:10.5px;color:#9aa1ab}
@@ -328,7 +330,7 @@ function renderGrid(){
     const hl0=HOL[hkey(d)]||[];
     if(VIEW==='lock'){
       const L=lockList(d);
-      const lm=L.map(x=>`<div class="lk ${x.pct>=10?'big':''}" title="${esc(x.name)} ${x.sh}주"><span class="ln">${esc(x.name)}${x.kind!=='보호예수'?`<em class="lkk">${x.kind.replace('기관확약 ','확약')}</em>`:''}</span><span class="lp">${manTxt(x.sh)}</span></div>`).join('');
+      const lm=L.map(x=>`<div class="lk ${x.kind!=='보호예수'?'hw':''}" title="${esc(x.name)} ${x.sh}주"><span class="ln">${esc(x.name)}${x.kind!=='보호예수'?`<em class="lkk">${x.kind.replace('기관확약 ','확약')}</em>`:''}</span><span class="lp">${manTxt(x.sh)}</span></div>`).join('');
       const hb0=hl0.map(x=>`<span class="hb ${x[0]}" title="${esc(x[2])}">${esc(x[1])}</span>`).join('');
       h+=`<div class="cell ${hl0.some(x=>x[0]==='kr')?'off':''} ${dow===0?'sun':''} ${dow===6?'sat':''} ${d===sel?'sel':''}" data-d="${d}">
       <div class="num"><span>${d}${HNAME[hkey(d)]?`<em class="hname">${HNAME[hkey(d)]}</em>`:''}</span><span>${L.length?`<span class="lcnt">🔓${L.length}</span>`:''}</span></div><div class="mini">${lm}</div>${hb0?`<div class="hbs">${hb0}</div>`:''}<div class="mob">${L.length?`<span class="mlk">🔓${L.length}</span>`:''}</div></div>`;
@@ -362,7 +364,7 @@ function renderList(){
     const notice=hl.map(x=>`<div class="hnote ${x[0]}"><b>${esc(x[1])}</b> ${esc(x[2])}</div>`).join('');
     const box=document.getElementById('list');
     if(!L.length){box.innerHTML=notice+'<div class="empty-msg">이날 보호예수 해제 일정이 없어요.</div>';return}
-    box.innerHTML=notice+`<div class="lhead"><span>종목</span><span>구분</span><span>해제 물량</span></div>`+L.map(x=>`<div class="lrow"><b>${esc(x.name)}</b><span class="lkind">${esc(x.kind)}${x.ld?`<small>상장 ${x.ld.slice(2).replace(/-/g,'.')}</small>`:''}</span><span class="lpct">${manTxt(x.sh)}</span></div>`).join('')+`<div class="lnote">보호예수: 인포스탁 · 기관확약: DART 증권발행실적보고서 '의무보유확약기간별 배정현황' 기준, 상장일+확약기간(주말·휴장일이면 다음 거래일)</div>`;
+    box.innerHTML=notice+`<div class="lhead"><span>종목</span><span>구분</span><span>해제 물량</span></div>`+L.map(x=>`<div class="lrow ${x.kind!=='보호예수'?'hw':''}"><b>${esc(x.name)}</b><span class="lkind">${esc(x.kind)}${x.ld?`<small>상장 ${x.ld.slice(2).replace(/-/g,'.')}</small>`:''}</span><span class="lpct">${manTxt(x.sh)}</span></div>`).join('')+`<div class="lnote">보호예수: 인포스탁 · 기관확약: DART 증권발행실적보고서 '의무보유확약기간별 배정현황' 기준, 상장일+확약기간(주말·휴장일이면 다음 거래일)</div>`;
     return;
   }
   const items=day?day.items.filter(pass):[];
