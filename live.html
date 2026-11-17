@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>해외 실시간 추정가 — 삼성전자 · SK하이닉스</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root{
+    --bg:#eef1f5; --card:#fff; --ink:#191f28; --sub:#4e5968; --muted:#8b95a1;
+    --line:#eef0f3; --up:#e5323b; --down:#2f6fe4; --flat:#4e5968; --live:#1a9b4b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    -webkit-font-smoothing:antialiased;padding:28px 16px}
+  .wrap{max-width:820px;margin:0 auto}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin:0 4px 14px;font-size:13px;color:var(--sub);gap:12px;flex-wrap:wrap}
+  .topbar b{color:var(--ink);font-weight:600}
+  .status{display:flex;align-items:center;gap:8px}
+  .pill{background:#fff;border-radius:999px;padding:5px 11px;font-size:12px;color:var(--sub);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .pill.err{color:#c62828}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px}
+  .card{background:var(--card);border-radius:18px;padding:22px 24px 20px;position:relative;
+    box-shadow:0 1px 3px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04)}
+  .head{display:flex;align-items:center;gap:12px}
+  .logo{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:15px;flex:none}
+  .name{font-size:28px;font-weight:700;letter-spacing:-.5px}
+  .gear{position:absolute;top:18px;right:18px;width:28px;height:28px;border:0;background:none;cursor:pointer;color:#9aa4b0;border-radius:8px;display:grid;place-items:center}
+  .gear:hover{background:#f2f4f6;color:var(--sub)}
+  .src{margin-top:14px;font-size:13px;font-weight:600;color:var(--live);display:flex;align-items:center;gap:6px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--live);box-shadow:0 0 0 0 rgba(26,155,75,.5)}
+  .dot.pulse{animation:pulse 1.2s ease-out}
+  .dot.stale{background:#c0c6cd}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(26,155,75,.55)}100%{box-shadow:0 0 0 9px rgba(26,155,75,0)}}
+  .price{margin-top:4px;display:flex;align-items:baseline;gap:8px}
+  .price .v{font-size:42px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums;border-radius:8px;padding:0 4px;margin-left:-4px;transition:background-color .9s}
+  .price .v.flash-up{background:rgba(229,50,59,.14);transition:none}
+  .price .v.flash-down{background:rgba(47,111,228,.14);transition:none}
+  .price .u{font-size:18px;color:var(--sub)}
+  .usd{font-size:14px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+  .chg{margin-top:14px;font-size:18px;color:var(--sub);display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
+  .chg .amt,.chg .pct{font-weight:700}
+  .chg .sep{color:#d1d6db}
+  .up{color:var(--up)!important} .down{color:var(--down)!important} .flat{color:var(--flat)!important}
+  .rows{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;display:grid;gap:8px}
+  .row{display:flex;justify-content:space-between;font-size:14px}
+  .row span:first-child{color:var(--sub)}
+  .row span:last-child{font-weight:600;font-variant-numeric:tabular-nums}
+  .foot{margin:16px 4px 0;font-size:12px;color:var(--muted);line-height:1.6}
+  /* settings panel */
+  .panel{display:none;margin-top:14px;border-top:1px solid var(--line);padding-top:14px}
+  .card.editing .panel{display:block}
+  .panel label{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:8px;font-size:13px;color:var(--sub);margin-bottom:8px}
+  .panel input{font:inherit;font-size:14px;padding:7px 10px;border:1px solid #dde1e6;border-radius:8px;width:100%;font-variant-numeric:tabular-nums}
+  .panel .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+  .panel button{font:inherit;font-size:13px;padding:7px 14px;border-radius:8px;border:0;cursor:pointer}
+  .panel .save{background:#3182f6;color:#fff} .panel .cancel{background:#f2f4f6;color:var(--sub)}
+  .panel .hint{font-size:12px;color:var(--muted);margin:2px 0 8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div>원/달러 <b id="fx">—</b> <span id="fxsrc" style="color:var(--muted)"></span></div>
+    <div class="status">
+      <span class="pill" id="updated">불러오는 중…</span>
+      <span class="pill" id="countdown">10초</span>
+    </div>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="foot">
+    가격 출처: Hyperliquid (trade.xyz) 무기한 선물 중간가 × 원/달러 환율 → 원화 환산 추정가. 10초마다 자동 갱신.<br>
+    종가·시가총액·52주 범위는 카드 오른쪽 위 ⚙에서 직접 바꿀 수 있어요(이 브라우저에 저장됨).
+  </div>
+</div>
+
+<script>
+const API = 'https://api.hyperliquid.xyz/info';
+const REFRESH_SEC = 10;
+const FX_COIN = 'xyz:KRW';
+
+// 기본값: 2026-11-17 KRX 종가 기준 (⚙에서 수정 가능)
+const STOCKS = [
+  { id:'samsung', name:'삼성전자', coin:'xyz:SMSN', logo:'S', color:'#1428a0',
+    defaults:{ refDate:'11/17', close:190300, marketCap:1086528544669700, low52:94500, high52:374500 } },
+  { id:'skhynix', name:'SK하이닉스', coin:'xyz:SKHX', logo:'SK', color:'#e3001b',
+    defaults:{ refDate:'11/17', close:1098000, marketCap:774280309752000, low52:501000, high52:2987000 } },
+];
+
+const store = {
+  get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+STOCKS.forEach(s => { s.cfg = Object.assign({}, s.defaults, store.get('kl_cfg_'+s.id) || {}); s.last = null; });
+
+const won = n => Math.round(n).toLocaleString('ko-KR');
+function fmtCap(n){
+  const jo = Math.floor(n / 1e12), eok = Math.round((n % 1e12) / 1e8);
+  if (jo && eok) return `${jo.toLocaleString('ko-KR')}조 ${eok.toLocaleString('ko-KR')}억 원`;
+  if (jo) return `${jo.toLocaleString('ko-KR')}조 원`;
+  return `${eok.toLocaleString('ko-KR')}억 원`;
+}
+
+const gearSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+
+function buildCards(){
+  const grid = document.getElementById('grid');
+  grid.innerHTML = STOCKS.map(s => `
+    <div class="card" id="c-${s.id}">
+      <button class="gear" title="기준값 설정" data-id="${s.id}">${gearSvg}</button>
+      <div class="head">
+        <div class="logo" style="background:${s.color}">${s.logo}</div>
+        <div class="name">${s.name}</div>
+      </div>
+      <div class="src"><span class="dot stale"></span>Hyperliquid 해외 실시간 추정가</div>
+      <div class="price"><span class="v">—</span><span class="u">원</span></div>
+      <div class="usd">≈ $— USD</div>
+      <div class="chg"><span class="lbl"></span><span class="amt"></span><span class="sep">|</span><span class="pct"></span></div>
+      <div class="rows">
+        <div class="row"><span>시가총액</span><span class="cap"></span></div>
+        <div class="row"><span>52주 최저·최고</span><span class="range"></span></div>
+      </div>
+      <form class="panel">
+        <div class="hint">KRX 종가 기준값 — 장 마감 후 새 종가로 바꿔 주세요.</div>
+        <label>기준일<input name="refDate" placeholder="11/17"></label>
+        <label>종가 (원)<input name="close" inputmode="numeric"></label>
+        <label>시가총액 (원)<input name="marketCap" inputmode="numeric"></label>
+        <label>52주 최저<input name="low52" inputmode="numeric"></label>
+        <label>52주 최고<input name="high52" inputmode="numeric"></label>
+        <div class="btns">
+          <button type="button" class="reset cancel">기본값</button>
+          <button type="button" class="cancel close">닫기</button>
+          <button type="submit" class="save">저장</button>
+        </div>
+      </form>
+    </div>`).join('');
+
+  STOCKS.forEach(s => {
+    const card = document.getElementById('c-'+s.id);
+    const form = card.querySelector('.panel');
+    const fill = cfg => { for (const k in cfg) if (form.elements[k]) form.elements[k].value = typeof cfg[k]==='number' ? cfg[k].toLocaleString('ko-KR') : cfg[k]; };
+    card.querySelector('.gear').onclick = () => { fill(s.cfg); card.classList.toggle('editing'); };
+    card.querySelector('.close').onclick = () => card.classList.remove('editing');
+    card.querySelector('.reset').onclick = () => fill(s.defaults);
+    form.onsubmit = e => {
+      e.preventDefault();
+      const num = k => Number(String(form.elements[k].value).replace(/[^\d.]/g,'')) || s.defaults[k];
+      s.cfg = { refDate: form.elements.refDate.value.trim() || s.defaults.refDate,
+        close:num('close'), marketCap:num('marketCap'), low52:num('low52'), high52:num('high52') };
+      store.set('kl_cfg_'+s.id, s.cfg);
+      card.classList.remove('editing');
+      render(s);
+    };
+  });
+}
+
+let fx = null, fxSource = '';
+
+function render(s){
+  const card = document.getElementById('c-'+s.id);
+  const { cfg } = s;
+  card.querySelector('.cap').textContent = fmtCap(cfg.marketCap);
+  card.querySelector('.range').textContent = `₩${won(cfg.low52)} ~ ₩${won(cfg.high52)}`;
+  card.querySelector('.chg .lbl').textContent = `${cfg.refDate} 종가 대비`;
+  if (s.usd == null || !fx) return;
+
+  const krw = s.usd * fx;
+  const diff = krw - cfg.close;
+  const pct = diff / cfg.close * 100;
+  const cls = Math.abs(diff) < 0.5 ? 'flat' : diff > 0 ? 'up' : 'down';
+  const arrow = cls==='up' ? '▲' : cls==='down' ? '▼' : '';
+
+  const v = card.querySelector('.price .v');
+  const newText = '₩' + won(krw);
+  if (s.last != null && Math.round(krw) !== Math.round(s.last)) {
+    v.classList.remove('flash-up','flash-down'); void v.offsetWidth;
+    v.classList.add(krw > s.last ? 'flash-up' : 'flash-down');
+    setTimeout(() => v.classList.remove('flash-up','flash-down'), 60);
+  }
+  v.textContent = newText;
+  s.last = krw;
+
+  card.querySelector('.usd').textContent = `≈ $${s.usd.toFixed(2)} USD`;
+  const amt = card.querySelector('.chg .amt'), p = card.querySelector('.chg .pct');
+  amt.className = 'amt ' + cls; p.className = 'pct ' + cls;
+  amt.textContent = `${arrow} ${won(Math.abs(diff))}원`;
+  p.textContent = `${pct>0?'+':''}${pct.toFixed(2)}%`;
+
+  const dot = card.querySelector('.dot');
+  dot.classList.remove('stale','pulse'); void dot.offsetWidth; dot.classList.add('pulse');
+}
+
+async function getFxFallback(){
+  const r = await fetch('https://open.er-api.com/v6/latest/USD');
+  const j = await r.json();
+  return j && j.rates && j.rates.KRW;
+}
+
+async function refresh(){
+  const updated = document.getElementById('updated');
+  try{
+    const res = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ type:'metaAndAssetCtxs', dex:'xyz' }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const [meta, ctxs] = await res.json();
+    const byName = {};
+    meta.universe.forEach((u,i) => byName[u.name] = ctxs[i]);
+
+    // 환율: Hyperliquid xyz:KRW 오라클 → 실패 시 공개 환율 API
+    const k = byName[FX_COIN];
+    const fxHL = k && Number(k.oraclePx || k.markPx);
+    if (fxHL > 500) { fx = fxHL; fxSource = '(Hyperliquid)'; }
+    else if (!fx) { const f = await getFxFallback().catch(()=>null); if (f) { fx = f; fxSource = '(open.er-api)'; } }
+    document.getElementById('fx').textContent = fx ? fx.toLocaleString('ko-KR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '원' : '—';
+    document.getElementById('fxsrc').textContent = fxSource;
+
+    STOCKS.forEach(s => {
+      const c = byName[s.coin];
+      if (!c) return;
+      const px = Number(c.midPx || c.markPx);   // 호가 중간가, 없으면 마크가
+      if (px > 0) s.usd = px;
+      render(s);
+    });
+
+    const t = new Date();
+    updated.className = 'pill';
+    updated.textContent = '업데이트 ' + t.toLocaleTimeString('en-GB');
+  }catch(e){
+    updated.className = 'pill err';
+    updated.textContent = '불러오기 실패 — 다음 갱신 때 재시도';
+    document.querySelectorAll('.dot').forEach(d => d.classList.add('stale'));
+    console.error(e);
+  }
+}
+
+buildCards();
+STOCKS.forEach(render);
+let left = REFRESH_SEC;
+refresh();
+setInterval(() => {
+  left -= 1;
+  if (left <= 0) { left = REFRESH_SEC; refresh(); }
+  document.getElementById('countdown').textContent = `${left}초 후 갱신`;
+}, 1000);
+</script>
+</body>
+</html>
