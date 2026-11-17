@@ -261,7 +261,7 @@ body.vsubs .subs{display:grid}
 .sbc .nm{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700}
 .sbc .nm i{width:10px;height:10px;border-radius:3px;display:inline-block}
 .sbt{font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:#eef0f4;color:#4b5563}
-.sbt.now{background:#16181d;color:#fff}
+.sbt.now{background:#16181d;color:#fff}.sbt.end{background:#f1f2f4;color:#9aa1ab}
 .sbkv{display:grid;grid-template-columns:78px 1fr;gap:5px 10px;margin-top:10px;font-size:13px}
 .sbkv b{color:var(--sub);font-weight:500}
 .sbe{padding:28px 18px 10px;color:#9aa1ab;font-size:14px}
@@ -490,7 +490,7 @@ const isKey=t=>/수능.*개장/.test(t)||JPRATE.test(t)||(KEYRE.test(t)&&!FOREIG
 const isEarn=t=>/실적발표/.test(t);
 const isGlobal=t=>/^(美|中|日|유로존|독일|영국|프랑스|대만|호주|캐나다|일본|중국|미국)|현지시간/.test(t);
 let filter='all',query='',sel=null;
-let today=new Date();const mkKey=t=>`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}`;let todayKey=mkKey(today);const isToday=d=>cur===todayKey&&d===today.getDate();
+const kstNow=()=>new Date(Date.now()+(540+new Date().getTimezoneOffset())*60000);let today=kstNow();const mkKey=t=>`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}`;let todayKey=mkKey(today);const isToday=d=>cur===todayKey&&d===today.getDate();
 function pass(it){
   if(filter==='hi'&&!it.h)return false;
   if(filter==='key'&&!isKey(it.t))return false;
@@ -638,7 +638,7 @@ const sbIso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+St
 let sbMi=0,sbSel=null;
 function sbFmt(k){const [y,m,d]=k.split('-');const w='일월화수목금토'[new Date(+y,m-1,+d).getDay()];return `${+m}월 ${+d}일 (${w})`}
 function renderSubs(){
-  const T=sbIso(new Date());if(!sbSel){sbSel=T;const i=MKEYS.indexOf(T.slice(0,7));sbMi=i>=0?i:0}
+  const T=sbIso(kstNow());if(!sbSel){sbSel=T;const i=MKEYS.indexOf(T.slice(0,7));sbMi=i>=0?i:0}
   const [y,m]=MKEYS[sbMi].split('-').map(Number);document.getElementById('sbLabel').textContent=`${y}.${String(m).padStart(2,'0')}`;
   const first=new Date(y,m-1,1),start=new Date(first);start.setDate(1-first.getDay());const last=new Date(y,m,0);let html='';
   for(let w=new Date(start);w<=last;w.setDate(w.getDate()+7)){
@@ -654,10 +654,10 @@ function renderSubs(){
   const W=document.getElementById('sbWeeks');W.innerHTML=html;
   W.querySelectorAll('.sbg').forEach(b=>b.onclick=()=>{sbSel=b.dataset.k;renderSubs()});
   W.querySelectorAll('.sbb').forEach(b=>b.onclick=()=>{sbSel=SB.find(z=>z.n===b.dataset.n).s;renderSubs()});
-  const card=(x,tag)=>{const fg=sbCol(x)[1];return `<div class="sbc"><div class="nm"><i style="background:${fg}"></i>${esc(x.n)} <span class="sbt ${tag==='청약 중'?'now':''}">${tag}</span></div><div class="sbkv"><b>청약</b><span>${sbFmt(x.s)} ~ ${sbFmt(x.e)}</span><b>공모가</b><span>${x.p?x.p+'원 (확정)':'미정 · 희망 '+x.band+'원'}</span><b>경쟁률</b><span>${x.comp?'일반 '+x.comp:'청약 후 공개'}</span><b>주관사</b><span>${esc(x.lead)}</span>${x.m?`<b>시가총액</b><span>${x.m.mcap}</span><b>유통물량</b><span>${x.m.flo}</span><b>구주주물량</b><span>${x.m.old}</span>`:''}</div></div>`};
+  const card=(x,tag)=>{const fg=sbCol(x)[1];return `<div class="sbc"><div class="nm"><i style="background:${fg}"></i>${esc(x.n)} <span class="sbt ${tag==='청약 중'||tag==='청약 마감일'?'now':tag==='청약 종료'?'end':''}">${tag}</span></div><div class="sbkv"><b>청약</b><span>${sbFmt(x.s)} ~ ${sbFmt(x.e)}</span><b>공모가</b><span>${x.p?x.p+'원 (확정)':'미정 · 희망 '+x.band+'원'}</span><b>경쟁률</b><span>${x.comp?'일반 '+x.comp:'청약 후 공개'}</span><b>주관사</b><span>${esc(x.lead)}</span>${x.m?`<b>시가총액</b><span>${x.m.mcap}</span><b>유통물량</b><span>${x.m.flo}</span><b>구주주물량</b><span>${x.m.old}</span>`:''}</div></div>`};
   const on=SB.filter(x=>x.s<=sbSel&&x.e>=sbSel);document.getElementById('sbTitle').textContent=sbFmt(sbSel)+' 공모주 청약';
-  let h=on.map(x=>card(x,sbSel===x.e?'청약 마감일':'청약 중')).join('');
-  if(!h){h='<div class="sbe">이 날 청약 일정이 없어요.</div>';const up=SB.filter(x=>x.s>sbSel).sort((a,b)=>a.s.localeCompare(b.s));if(up.length){const d0=up[0].s;h+='<div class="sbc" style="padding-bottom:4px;border:0"><b style="font-size:13px;color:#5d6470">다음 청약 · '+sbFmt(d0)+'</b></div>'+up.filter(x=>x.s===d0).map(x=>card(x,'예정')).join('')}}
+  const TK=sbIso(kstNow()),stOf=x=>x.e<TK?'청약 종료':x.s>TK?'청약 예정':TK===x.e?'청약 마감일':'청약 중';let h=on.map(x=>card(x,stOf(x))).join('');
+  if(!h){h='<div class="sbe">이 날 청약 일정이 없어요.</div>';const up=SB.filter(x=>x.s>sbSel).sort((a,b)=>a.s.localeCompare(b.s));if(up.length){const d0=up[0].s;h+='<div class="sbc" style="padding-bottom:4px;border:0"><b style="font-size:13px;color:#5d6470">다음 청약 · '+sbFmt(d0)+'</b></div>'+up.filter(x=>x.s===d0).map(x=>card(x,stOf(x))).join('')}}
   document.getElementById('sbList').innerHTML=h;
 }
 document.getElementById('sbPrev').onclick=()=>{if(sbMi>0){sbMi--;renderSubs()}};
@@ -724,8 +724,8 @@ const msel=document.getElementById('msel');MKEYS.forEach(k=>{const o=document.cr
 try{document.fonts&&document.fonts.ready.then(()=>{const o=SIN_Y;calcSinY();if(o!==SIN_Y&&cur){renderGrid()}})}catch(e){}
 {const h=(location.hash||'').replace('#m','');goMonth(MKEYS.includes(todayKey)?todayKey:(MKEYS.includes(h)?h:MKEYS[0]));}
 // 자정이 지나면(페이지를 켜둔 상태) 오늘 날짜로 자동 이동
-setInterval(()=>{const n=new Date();if(n.getDate()!==today.getDate()||n.getMonth()!==today.getMonth()){const was=(cur===todayKey&&sel===today.getDate());today=n;todayKey=mkKey(n);if(was&&MKEYS.includes(todayKey))goMonth(todayKey,n.getDate());}},60000);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){const n=new Date();if(n.getDate()!==today.getDate()||n.getMonth()!==today.getMonth()){today=n;todayKey=mkKey(n);if(MKEYS.includes(todayKey))goMonth(todayKey,n.getDate());}}});
+setInterval(()=>{const n=kstNow();if(n.getDate()!==today.getDate()||n.getMonth()!==today.getMonth()){const was=(cur===todayKey&&sel===today.getDate());today=n;todayKey=mkKey(n);if(was&&MKEYS.includes(todayKey))goMonth(todayKey,n.getDate());}},60000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){const n=kstNow();if(n.getDate()!==today.getDate()||n.getMonth()!==today.getMonth()){today=n;todayKey=mkKey(n);if(MKEYS.includes(todayKey))goMonth(todayKey,n.getDate());}}});
 </script>
 </body>
 </html>
