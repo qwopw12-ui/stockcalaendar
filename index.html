@@ -543,7 +543,7 @@ function renderList(){
     const notice=hl.map(x=>`<div class="hnote ${x[0]}"><b>${esc(x[1])}</b> ${esc(x[2])}</div>`).join('');
     const box=document.getElementById('list');
     if(!L.length){box.innerHTML=notice+'<div class="empty-msg">이날 보호예수 해제 일정이 없어요.</div>';return}
-    box.innerHTML=notice+`<div class="lhead"><span>종목</span><span>구분</span><span>해제 물량</span></div>`+L.map(x=>`<div class="lrow ${x.kind!=='보호예수'?'hw':''}"><b>${esc(x.name)}${x.kind!=='보호예수'?'<em class="hwb">의무확약</em>':''}</b><span class="lkind">${esc(x.kind)}${x.ld?`<small>상장 ${x.ld.slice(2).replace(/-/g,'.')}</small>`:''}</span><span class="lpct">${manTxt(x.sh)}</span></div>`).join('')+`<div class="lnote">보호예수: 인포스탁 · 기관확약: DART 증권발행실적보고서 '의무보유확약기간별 배정현황' 기준, 상장일+확약기간(주말·휴장일이면 다음 거래일)</div>`;
+    box.innerHTML=notice+`<div class="lhead"><span>종목</span><span>구분</span><span>해제 물량</span></div>`+L.map(x=>`<div class="lrow ${x.kind!=='보호예수'?'hw':''}"><b>${esc(x.name)}</b><span class="lkind">${esc(x.kind)}${x.ld?`<small>상장 ${x.ld.slice(2).replace(/-/g,'.')}</small>`:''}</span><span class="lpct">${manTxt(x.sh)}</span></div>`).join('')+`<div class="lnote">보호예수: 인포스탁 · 기관확약: DART 증권발행실적보고서 '의무보유확약기간별 배정현황' 기준, 상장일+확약기간(주말·휴장일이면 다음 거래일)</div>`;
     return;
   }
   const items=day?day.items.filter(pass):[];
