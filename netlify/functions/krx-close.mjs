@@ -84,6 +84,21 @@ export default async (req) => {
   const codes = (url.searchParams.get('codes') || '005930,000660')
     .split(',').map(s => s.trim()).filter(s => /^\d{6}$/.test(s)).slice(0, 10);
 
+  if (url.searchParams.get('probe') === '1') {
+    const code = '005930';
+    const H = { 'User-Agent': UA };
+    const grab = async (name, u, opt = {}) => { try { const r = await fetch(u, { ...opt, headers: { ...H, ...(opt.headers || {}) } }); return [name, r.status + ' ' + (await r.text()).slice(0, 1500)]; } catch (e) { return [name, 'ERR ' + e.message]; } };
+    const res = await Promise.all([
+      grab('naver_chart_day', `https://api.stock.naver.com/chart/domestic/item/${code}/day?startDateTime=202611100000&endDateTime=202611180000`),
+      grab('naver_chart_day_krx', `https://api.stock.naver.com/chart/domestic/item/${code}/day?startDateTime=202611100000&endDateTime=202611180000&exchangeType=KRX`),
+      grab('naver_fchart', `https://fchart.stock.naver.com/sise.nhn?symbol=${code}&timeframe=day&count=6&requestType=0`),
+      grab('naver_sise_day_pc', `https://finance.naver.com/item/sise_day.naver?code=${code}&page=1`, { headers: { Referer: 'https://finance.naver.com/' } }),
+      grab('naver_m_price', `https://m.stock.naver.com/api/stock/${code}/price?pageSize=6&page=1`),
+      grab('daum', `https://finance.daum.net/api/quote/A${code}/days?symbolCode=A${code}&page=1&perPage=6&pagination=true`, { headers: { Referer: `https://finance.daum.net/quotes/A${code}` } }),
+      grab('krx', 'http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', Referer: 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd' }, body: 'bld=dbms/MDC/STAT/standard/MDCSTAT01701&isuCd=KR7005930003&strtDd=20261110&endDd=20261117' }),
+    ]);
+    return new Response(JSON.stringify(Object.fromEntries(res)), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Netlify-CDN-Cache-Control': 'no-store' } });
+  }
   const stocks = await Promise.all(codes.map(one));
   const ok = stocks.some(s => s.close && s.date);
   return json({ ok, fetchedAt: new Date().toISOString(), source: 'Naver Finance 일봉 (NXT 포함 20:00 최종가)', stocks },
