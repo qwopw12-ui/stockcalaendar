@@ -64,15 +64,11 @@
 <div class="wrap">
   <div class="topbar">
     <div>원/달러 <b id="fx">—</b> <span id="fxsrc" style="color:var(--muted)"></span></div>
-    <div class="status">
-      <span class="pill" id="updated">불러오는 중…</span>
-      <span class="pill" id="countdown">10초</span>
-    </div>
   </div>
   <div class="grid" id="grid"></div>
   <div class="foot">
     가격 출처: Hyperliquid (trade.xyz) 무기한 선물 중간가 × 원/달러 환율 → 원화 환산 추정가. 10초마다 자동 갱신.<br>
-    종가·시가총액·52주 범위: 네이버 증권 KRX 정규장 기준, 장 마감 후 자동 반영(10분마다 확인).
+    종가·시가총액: 네이버 증권 KRX 정규장 기준, 장 마감 후 자동 반영(10분마다 확인).
   </div>
 </div>
 
@@ -142,19 +138,15 @@ function buildCards(){
       </div>
       <div class="src"><span class="dot stale"></span>Hyperliquid 해외 실시간 추정가</div>
       <div class="price"><span class="v">—</span><span class="u">원</span></div>
-      <div class="usd">≈ $— USD</div>
       <div class="chg"><span class="lbl"></span><span class="amt"></span><span class="sep">|</span><span class="pct"></span></div>
       <div class="rows">
         <div class="row"><span>시가총액</span><span class="cap"></span></div>
-        <div class="row"><span>52주 최저·최고</span><span class="range"></span></div>
       </div>
       <form class="panel">
         <div class="hint">종가는 매일 자동으로 바뀌어요. 여기서 고친 값은 같은 기준일 동안만 이 브라우저에 적용돼요.</div>
         <label>기준일<input name="refDate" placeholder="11/17"></label>
         <label>종가 (원)<input name="close" inputmode="numeric"></label>
         <label>시가총액 (원)<input name="marketCap" inputmode="numeric"></label>
-        <label>52주 최저<input name="low52" inputmode="numeric"></label>
-        <label>52주 최고<input name="high52" inputmode="numeric"></label>
         <div class="btns">
           <button type="button" class="reset cancel">자동값으로</button>
           <button type="button" class="cancel close">닫기</button>
@@ -178,7 +170,7 @@ function buildCards(){
       const base = cfgOf(s);
       const num = k => Number(String(form.elements[k].value).replace(/[^\d.]/g,'')) || base[k];
       s.manual = { refDate: form.elements.refDate.value.trim() || base.refDate,
-        close:num('close'), marketCap:num('marketCap'), low52:num('low52'), high52:num('high52') };
+        close:num('close'), marketCap:num('marketCap') };
       store.set('kl_manual_'+s.id, s.manual);
       card.classList.remove('editing');
       render(s);
@@ -192,7 +184,6 @@ function render(s){
   const card = document.getElementById('c-'+s.id);
   const cfg = cfgOf(s);
   card.querySelector('.cap').textContent = fmtCap(cfg.marketCap);
-  card.querySelector('.range').textContent = `₩${won(cfg.low52)} ~ ₩${won(cfg.high52)}`;
   card.querySelector('.chg .lbl').textContent = `${cfg.refDate} 종가 대비`;
   if (s.usd == null || !fx) return;
 
@@ -212,7 +203,6 @@ function render(s){
   v.textContent = newText;
   s.last = krw;
 
-  card.querySelector('.usd').textContent = `≈ $${s.usd.toFixed(2)} USD`;
   const amt = card.querySelector('.chg .amt'), p = card.querySelector('.chg .pct');
   amt.className = 'amt ' + cls; p.className = 'pct ' + cls;
   amt.textContent = `${arrow} ${won(Math.abs(diff))}원`;
@@ -229,7 +219,7 @@ async function getFxFallback(){
 }
 
 async function refresh(){
-  const updated = document.getElementById('updated');
+  const updated = document.getElementById('updated') || { set className(v){}, set textContent(v){} };
   try{
     const res = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ type:'metaAndAssetCtxs', dex:'xyz' }) });
@@ -274,7 +264,6 @@ refresh();
 setInterval(() => {
   left -= 1;
   if (left <= 0) { left = REFRESH_SEC; refresh(); }
-  document.getElementById('countdown').textContent = `${left}초 후 갱신`;
 }, 1000);
 </script>
 </body>
