@@ -327,7 +327,9 @@ body.vadr .adrv{display:block}
 .fgline svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .usflag{display:inline-block;font-size:13px;font-weight:800;color:#fff;background:#1e3a8a;border-radius:6px;padding:3px 7px;margin-right:8px;vertical-align:4px;letter-spacing:.5px}
 .fg-us{border-top:4px solid #1e3a8a}.fsrc{font-size:11px;color:#9ca3af;margin-left:4px;white-space:nowrap}
-#fgUpd,#usUpd{display:none}
+#fgUpd,#usUpd,#fgHist,#usHist{display:none}
+.fgrow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}.fgrow .fg{margin-bottom:0}.fgrow .fg-body{grid-template-columns:1fr;margin-top:14px}.fgrow .gauge{max-width:460px}.fgrow .fg h2{font-size:22px}.fgrow .fg .q{font-size:13px}
+@media(max-width:900px){.fgrow{grid-template-columns:1fr}}
 .krflag{background:#c60c30}.fg-kr{border-top:4px solid #c60c30}
 .flag{display:inline-block;height:17px;width:auto;margin-right:6px;vertical-align:1px;border:1px solid #d1d5db;border-radius:2px}
 @media(max-width:700px){.fg{padding:16px}.fg h2{font-size:21px}.fg-body{grid-template-columns:1fr}.cg{grid-template-columns:1fr 1fr}}
@@ -374,13 +376,14 @@ body.vadr .adrv{display:block}
   </aside>
 </main>
 <section class="adrv" id="adr">
-<div class="fg fg-kr" id="fg">
+<div class="fgrow"><div class="fg fg-kr" id="fg">
     <div class="fg-top"><div><h2><svg class="flag" viewBox="-36 -24 72 48" aria-label="태극기"><rect x="-36" y="-24" width="72" height="48" fill="#fff"/><g transform="rotate(33.69)"><circle r="12" fill="#0047a0"/><path d="M-12 0A12 12 0 0 1 12 0A6 6 0 0 0 0 0A6 6 0 0 1-12 0z" fill="#cd2e3a"/></g><g fill="#000"><g transform="rotate(213.69)"><rect x="16" y="-6" width="2" height="12"/><rect x="19" y="-6" width="2" height="12"/><rect x="22" y="-6" width="2" height="12"/></g><g transform="rotate(33.69)"><rect x="16" y="-6" width="2" height="5.4"/><rect x="16" y="0.6" width="2" height="5.4"/><rect x="19" y="-6" width="2" height="5.4"/><rect x="19" y="0.6" width="2" height="5.4"/><rect x="22" y="-6" width="2" height="5.4"/><rect x="22" y="0.6" width="2" height="5.4"/></g><g transform="rotate(-33.69)"><rect x="16" y="-6" width="2" height="5.4"/><rect x="16" y="0.6" width="2" height="5.4"/><rect x="19" y="-6" width="2" height="12"/><rect x="22" y="-6" width="2" height="5.4"/><rect x="22" y="0.6" width="2" height="5.4"/></g><g transform="rotate(146.31)"><rect x="16" y="-6" width="2" height="12"/><rect x="19" y="-6" width="2" height="5.4"/><rect x="19" y="0.6" width="2" height="5.4"/><rect x="22" y="-6" width="2" height="12"/></g></g></svg><span class="usflag krflag">KR</span>한국 공포·탐욕 지수</h2><p class="q">지금 국내 증시를 움직이는 심리는 공포일까, 탐욕일까?</p></div></div>
     <div class="fg-body"><div><div class="gauge" id="gauge"></div><div class="fg-upd" id="fgUpd"></div></div><div class="hist" id="fgHist"></div></div>
   </div>
   <div class="fg fg-us" id="fgus">
     <div class="fg-top"><div><h2><svg class="flag" viewBox="0 0 19 10" aria-label="미국 국기"><rect width="19" height="10" fill="#fff"/><rect y="0.000" width="19" height="0.769" fill="#b22234"/><rect y="1.538" width="19" height="0.769" fill="#b22234"/><rect y="3.077" width="19" height="0.769" fill="#b22234"/><rect y="4.615" width="19" height="0.769" fill="#b22234"/><rect y="6.154" width="19" height="0.769" fill="#b22234"/><rect y="7.692" width="19" height="0.769" fill="#b22234"/><rect y="9.231" width="19" height="0.769" fill="#b22234"/><rect width="7.6" height="5.385" fill="#3c3b6e"/><g fill="#fff"><circle cx="0.63" cy="0.54" r="0.28"/><circle cx="1.90" cy="0.54" r="0.28"/><circle cx="3.17" cy="0.54" r="0.28"/><circle cx="4.44" cy="0.54" r="0.28"/><circle cx="5.71" cy="0.54" r="0.28"/><circle cx="6.98" cy="0.54" r="0.28"/><circle cx="1.26" cy="1.62" r="0.28"/><circle cx="2.53" cy="1.62" r="0.28"/><circle cx="3.80" cy="1.62" r="0.28"/><circle cx="5.07" cy="1.62" r="0.28"/><circle cx="6.34" cy="1.62" r="0.28"/><circle cx="0.63" cy="2.70" r="0.28"/><circle cx="1.90" cy="2.70" r="0.28"/><circle cx="3.17" cy="2.70" r="0.28"/><circle cx="4.44" cy="2.70" r="0.28"/><circle cx="5.71" cy="2.70" r="0.28"/><circle cx="6.98" cy="2.70" r="0.28"/><circle cx="1.26" cy="3.78" r="0.28"/><circle cx="2.53" cy="3.78" r="0.28"/><circle cx="3.80" cy="3.78" r="0.28"/><circle cx="5.07" cy="3.78" r="0.28"/><circle cx="6.34" cy="3.78" r="0.28"/><circle cx="0.63" cy="4.86" r="0.28"/><circle cx="1.90" cy="4.86" r="0.28"/><circle cx="3.17" cy="4.86" r="0.28"/><circle cx="4.44" cy="4.86" r="0.28"/><circle cx="5.71" cy="4.86" r="0.28"/><circle cx="6.98" cy="4.86" r="0.28"/></g></svg><span class="usflag">US</span>미국 공포·탐욕 지수</h2><p class="q">미국 증시를 움직이는 심리는 지금 공포일까, 탐욕일까? <span class="fsrc">출처: CNN Fear &amp; Greed Index</span></p></div></div>
     <div class="fg-body"><div><div class="gauge" id="gaugeUS"></div><div class="fg-upd" id="usUpd"></div></div><div class="hist" id="usHist"></div></div>
+  </div>
   </div>
   <div class="ad-cards" id="adCards"></div>
   <div class="ad-info">
