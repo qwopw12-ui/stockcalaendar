@@ -67,7 +67,7 @@
   </div>
   <div class="grid" id="grid"></div>
   <div class="foot">
-    가격 출처: Hyperliquid (trade.xyz) 무기한 선물 중간가 × 원/달러 환율 → 원화 환산 추정가. 10초마다 자동 갱신.<br>
+    가격 출처: Hyperliquid(삼성전자·SK하이닉스)·Bybit(삼성전기) 무기한 선물 호가 중간가 × 원/달러 환율 → 원화 환산 추정가. 10초마다 자동 갱신.<br>
     종가·시가총액: 네이버 증권 KRX 정규장 기준, 장 마감 후 자동 반영(10분마다 확인).
   </div>
 </div>
@@ -85,7 +85,26 @@ const STOCKS = [
     defaults:{ refDate:'11/17', close:189800, marketCap:1109623679798400, low52:94500, high52:374500 } },
   { id:'skhynix', code:'000660', name:'SK하이닉스', coin:'xyz:SKHX', logo:'SK', color:'#e3001b',
     defaults:{ refDate:'11/17', close:1100000, marketCap:777479002000000, low52:501000, high52:2987000 } },
+  { id:'semco', code:'009150', name:'삼성전기', src:'bybit', symbol:'SAMSUNGEMUSDT', gateContract:'SAMSUNGEM_USDT', logo:'SE', color:'#1428a0',
+    defaults:{ refDate:'11/17', close:754000, marketCap:54811046784000, low52:201000, high52:2417000 } },
 ];
+
+// 바이비트 → 실패 시 게이트에서 호가 중간가(USD) 조회
+async function fetchCexMid(s){
+  try{
+    const r = await fetch(`https://api.bybit.com/v5/market/tickers?category=linear&symbol=${s.symbol}`);
+    const t = (await r.json()).result.list[0];
+    const bid = Number(t.bid1Price), ask = Number(t.ask1Price);
+    const px = bid > 0 && ask > 0 ? (bid + ask) / 2 : Number(t.markPrice || t.lastPrice);
+    if (px > 0) return { px, src:'Bybit' };
+  }catch(e){}
+  const r = await fetch(`https://api.gateio.ws/api/v4/futures/usdt/tickers?contract=${s.gateContract}`);
+  const t = (await r.json())[0];
+  const bid = Number(t.highest_bid), ask = Number(t.lowest_ask);
+  const px = bid > 0 && ask > 0 ? (bid + ask) / 2 : Number(t.mark_price || t.last);
+  if (px > 0) return { px, src:'Gate' };
+  throw new Error('no price');
+}
 
 const store = {
   get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
@@ -134,7 +153,7 @@ function buildCards(){
         <div class="logo" style="background:${s.color}">${s.logo}</div>
         <div class="name">${s.name}</div>
       </div>
-      <div class="src"><span class="dot stale"></span>Hyperliquid 해외 실시간 추정가</div>
+      <div class="src"><span class="dot stale"></span><span class="srcname">${s.src === 'bybit' ? 'Bybit' : 'Hyperliquid'}</span>해외 실시간 추정가</div>
       <div class="price"><span class="v">—</span><span class="u">원</span></div>
       <div class="chg"><span class="lbl"></span><span class="amt"></span><span class="sep">|</span><span class="pct"></span></div>
       <div class="rows">
@@ -183,6 +202,19 @@ async function getFxFallback(){
   return j && j.rates && j.rates.KRW;
 }
 
+async function refreshCex(){
+  await Promise.all(STOCKS.filter(s => s.src).map(async s => {
+    try{
+      const { px, src } = await fetchCexMid(s);
+      s.usd = px;
+      document.querySelector(`#c-${s.id} .srcname`).textContent = src;
+      render(s);
+    }catch(e){
+      const d = document.querySelector(`#c-${s.id} .dot`); if (d) d.classList.add('stale');
+    }
+  }));
+}
+
 async function refresh(){
   const updated = document.getElementById('updated') || { set className(v){}, set textContent(v){} };
   try{
@@ -200,7 +232,8 @@ async function refresh(){
     else if (!fx) { const f = await getFxFallback().catch(()=>null); if (f) { fx = f; fxSource = '(open.er-api)'; } }
     document.getElementById('fx').textContent = fx ? fx.toLocaleString('ko-KR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '원' : '—';
 
-    STOCKS.forEach(s => {
+    refreshCex();   // 환율이 정해진 뒤 삼성전기(바이비트) 조회
+    STOCKS.filter(s => !s.src).forEach(s => {
       const c = byName[s.coin];
       if (!c) return;
       const px = Number(c.midPx || c.markPx);   // 호가 중간가, 없으면 마크가
@@ -214,6 +247,7 @@ async function refresh(){
   }catch(e){
     updated.className = 'pill err';
     updated.textContent = '불러오기 실패 — 다음 갱신 때 재시도';
+    if (fx) refreshCex();
     document.querySelectorAll('.dot').forEach(d => d.classList.add('stale'));
     console.error(e);
   }
