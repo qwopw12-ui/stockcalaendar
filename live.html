@@ -63,7 +63,7 @@
 <body>
 <div class="wrap">
   <div class="topbar">
-    <div>원/달러 <b id="fx">—</b> <span id="fxsrc" style="color:var(--muted)"></span></div>
+    <div>원/달러 <b id="fx">—</b></div>
   </div>
   <div class="grid" id="grid"></div>
   <div class="foot">
@@ -234,7 +234,6 @@ async function refresh(){
     if (fxHL > 500) { fx = fxHL; fxSource = '(Hyperliquid)'; }
     else if (!fx) { const f = await getFxFallback().catch(()=>null); if (f) { fx = f; fxSource = '(open.er-api)'; } }
     document.getElementById('fx').textContent = fx ? fx.toLocaleString('ko-KR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '원' : '—';
-    document.getElementById('fxsrc').textContent = fxSource;
 
     STOCKS.forEach(s => {
       const c = byName[s.coin];
