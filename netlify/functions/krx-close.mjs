@@ -1,6 +1,6 @@
-// KRX 정규장 종가·시가총액·52주 범위를 네이버 증권에서 받아 live.html에 넘겨주는 함수
+// 기준 종가(NXT 애프터마켓 20:00 최종가)·시가총액을 네이버 증권에서 받아 live.html에 넘겨주는 함수
 // 주소: /api/krx-close?codes=005930,000660
-// - 종가·52주 범위: 네이버 KRX 일봉(siseJson, NXT 미포함) 기준
+// - 기준 종가: 네이버 일봉(siseJson) 종가 = NXT 애프터마켓까지 반영된 20:00 최종가
 // - 시가총액: 네이버 시총 ÷ 현재가로 상장주식수를 구한 뒤 × 기준 종가
 // 결과는 Netlify CDN에 10분간 캐시되어 함수 호출은 많아야 10분에 한 번입니다.
 
@@ -32,8 +32,7 @@ async function dailyRows(code) {
 }
 
 async function one(code) {
-  // 시가총액은 KRX 정규장 종가 기준으로 계산
-  const out = { code };
+  const out = { code, basis: 'NXT' };
   const errors = [];
   let poll = null, rows = [];
 
@@ -46,55 +45,23 @@ async function one(code) {
   const now = kst();
   const today = ymd(now);
   const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-  const marketOpen = poll && /OPEN/i.test(String(poll.marketStatus || ''));
-  // 장중이거나 오늘 15:35 이전이면 오늘 봉은 아직 확정 종가가 아님 → 직전 거래일 사용
-  const todayUnfinished = marketOpen || minutes < 15 * 60 + 35;
+  // 네이버 일봉 종가 = NXT 애프터마켓까지 끝난 20:00 최종가.
+  // 오늘 20:05 전이면 오늘 봉은 아직 확정이 아니므로 직전 거래일 사용.
+  const todayFinished = minutes >= 20 * 60 + 5;
 
   if (rows.length) {
     let idx = rows.length - 1;
-    if (rows[idx].date === today && todayUnfinished && idx > 0) idx -= 1;
-    const ref = rows[idx];
-    out.date = ref.date;
-    out.close = ref.close;
-
-    // 52주(기준일 포함 직전 1년) 최고·최저 — 장중 고가/저가 기준
-    const from = ymd(new Date(Date.UTC(+ref.date.slice(0, 4) - 1, +ref.date.slice(4, 6) - 1, +ref.date.slice(6, 8))));
-    const yr = rows.slice(0, idx + 1).filter(r => r.date > from);
-    if (yr.length) {
-      out.high52 = Math.max(...yr.map(r => r.high || r.close));
-      out.low52 = Math.min(...yr.map(r => r.low || r.close));
-    }
+    if (rows[idx].date === today && !todayFinished && idx > 0) idx -= 1;
+    out.date = rows[idx].date;
+    out.close = rows[idx].close;
   }
 
   if (poll) {
+    // 시가총액 = 상장주식수(네이버 시총 ÷ 현재가) × 기준 종가
     const cap = toNum(poll.marketValueFullRaw), px = toNum(poll.closePriceRaw || poll.closePrice);
     if (cap && px) {
-      const shares = Math.round(cap / px);
-      out.shares = shares;
-      if (out.close) out.marketCap = shares * out.close;
-    }
-    if (!out.close && px) out.close = px; // 일봉 실패 시 대비
-  }
-
-  // NXT(넥스트레이드) 애프터마켓 20:00 종가를 비교 기준으로 사용
-  // - 그날 애프터마켓이 끝났으면(20:00 이후) 그 마감가
-  // - 아직 거래 중(프리마켓~애프터마켓)이면 '현재가 − 전일 대비'로 직전 NXT 종가 계산
-  const om = poll && poll.overMarketPriceInfo;
-  if (om) {
-    const over = toNum(om.overPrice), chg = toNum(om.compareToPreviousClosePrice);
-    const tdate = String(om.localTradedAt || '').slice(0, 10).replace(/-/g, '');
-    const finished = /AFTER_MARKET/i.test(om.tradingSessionType || '') && /CLOSE/i.test(om.overMarketStatus || '')
-      && /^\d{8}$/.test(tdate) && (tdate < today || minutes >= 20 * 60);
-    let nxtClose = null, nxtDate = null;
-    if (over && finished) { nxtClose = over; nxtDate = tdate; }
-    else if (over && chg != null) {
-      nxtClose = over - chg;
-      const prev = rows.filter(r => r.date < (tdate || today)).pop();
-      nxtDate = prev ? prev.date : null;
-    }
-    if (nxtClose && nxtDate) {
-      out.krxClose = out.close; out.krxDate = out.date;
-      out.close = nxtClose; out.date = nxtDate; out.basis = 'NXT';
+      out.shares = Math.round(cap / px);
+      if (out.close) out.marketCap = out.shares * out.close;
     }
   }
 
@@ -117,19 +84,9 @@ export default async (req) => {
   const codes = (url.searchParams.get('codes') || '005930,000660')
     .split(',').map(s => s.trim()).filter(s => /^\d{6}$/.test(s)).slice(0, 10);
 
-  if (url.searchParams.get('raw') === '1') {
-    const raw = await Promise.all(codes.map(async code => {
-      const [poll, rows] = await Promise.all([
-        get(`https://polling.finance.naver.com/api/realtime/domestic/stock/${code}`).then(j => j.datas[0]).catch(e => ({ err: e.message })),
-        dailyRows(code).catch(e => [{ err: e.message }]),
-      ]);
-      return { code, krxRows: rows.slice(-6), closePrice: poll.closePrice, marketStatus: poll.marketStatus, localTradedAt: poll.localTradedAt, over: poll.overMarketPriceInfo };
-    }));
-    return new Response(JSON.stringify(raw), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Netlify-CDN-Cache-Control': 'no-store' } });
-  }
   const stocks = await Promise.all(codes.map(one));
   const ok = stocks.some(s => s.close && s.date);
-  return json({ ok, fetchedAt: new Date().toISOString(), source: 'Naver Finance (KRX 정규장 일봉)', stocks },
+  return json({ ok, fetchedAt: new Date().toISOString(), source: 'Naver Finance 일봉 (NXT 포함 20:00 최종가)', stocks },
     ok ? 200 : 502,
     ok ? 'public, durable, s-maxage=600, stale-while-revalidate=3600' : 'no-store');
 };
