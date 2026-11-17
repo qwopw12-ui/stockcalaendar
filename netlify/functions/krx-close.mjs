@@ -32,6 +32,7 @@ async function dailyRows(code) {
 }
 
 async function one(code) {
+  // 시가총액은 KRX 정규장 종가 기준으로 계산
   const out = { code };
   const errors = [];
   let poll = null, rows = [];
@@ -73,6 +74,28 @@ async function one(code) {
       if (out.close) out.marketCap = shares * out.close;
     }
     if (!out.close && px) out.close = px; // 일봉 실패 시 대비
+  }
+
+  // NXT(넥스트레이드) 애프터마켓 20:00 종가를 비교 기준으로 사용
+  // - 그날 애프터마켓이 끝났으면(20:00 이후) 그 마감가
+  // - 아직 거래 중(프리마켓~애프터마켓)이면 '현재가 − 전일 대비'로 직전 NXT 종가 계산
+  const om = poll && poll.overMarketPriceInfo;
+  if (om) {
+    const over = toNum(om.overPrice), chg = toNum(om.compareToPreviousClosePrice);
+    const tdate = String(om.localTradedAt || '').slice(0, 10).replace(/-/g, '');
+    const finished = /AFTER_MARKET/i.test(om.tradingSessionType || '') && /CLOSE/i.test(om.overMarketStatus || '')
+      && /^\d{8}$/.test(tdate) && (tdate < today || minutes >= 20 * 60);
+    let nxtClose = null, nxtDate = null;
+    if (over && finished) { nxtClose = over; nxtDate = tdate; }
+    else if (over && chg != null) {
+      nxtClose = over - chg;
+      const prev = rows.filter(r => r.date < (tdate || today)).pop();
+      nxtDate = prev ? prev.date : null;
+    }
+    if (nxtClose && nxtDate) {
+      out.krxClose = out.close; out.krxDate = out.date;
+      out.close = nxtClose; out.date = nxtDate; out.basis = 'NXT';
+    }
   }
 
   if (errors.length) out.errors = errors;

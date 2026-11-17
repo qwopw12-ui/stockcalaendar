@@ -29,26 +29,26 @@
   .logo img{width:100%;height:100%;object-fit:cover;display:block}
   .logo span{display:none}
   .logo.fb{background:var(--c)} .logo.fb span{display:block}
-  .name{font-size:28px;font-weight:700;letter-spacing:-.5px}
+  .name{font-size:25px;font-weight:700;letter-spacing:-.5px}
   .gear{position:absolute;top:18px;right:18px;width:28px;height:28px;border:0;background:none;cursor:pointer;color:#9aa4b0;border-radius:8px;display:grid;place-items:center}
   .gear:hover{background:#f2f4f6;color:var(--sub)}
-  .src{margin-top:14px;font-size:13px;font-weight:600;color:var(--live);display:flex;align-items:center;gap:6px}
+  .src{margin-top:12px;font-size:12px;font-weight:600;color:var(--live);display:flex;align-items:center;gap:6px}
   .dot{width:8px;height:8px;border-radius:50%;background:var(--live);box-shadow:0 0 0 0 rgba(26,155,75,.5)}
   .dot.pulse{animation:pulse 1.2s ease-out}
   .dot.stale{background:#c0c6cd}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(26,155,75,.55)}100%{box-shadow:0 0 0 9px rgba(26,155,75,0)}}
   .price{margin-top:4px;display:flex;align-items:baseline;gap:8px}
-  .price .v{font-size:42px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums;border-radius:8px;padding:0 4px;margin-left:-4px;transition:background-color .9s}
+  .price .v{font-size:38px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums;border-radius:8px;padding:0 4px;margin-left:-4px;transition:background-color .9s}
   .price .v.flash-up{background:rgba(229,50,59,.14);transition:none}
   .price .v.flash-down{background:rgba(47,111,228,.14);transition:none}
-  .price .u{font-size:18px;color:var(--sub)}
+  .price .u{font-size:16px;color:var(--sub)}
   .usd{font-size:14px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
-  .chg{margin-top:14px;font-size:18px;color:var(--sub);display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
+  .chg{margin-top:12px;font-size:15px;color:var(--sub);display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
   .chg .amt,.chg .pct{font-weight:700}
   .chg .sep{color:#d1d6db}
   .up{color:var(--up)!important} .down{color:var(--down)!important} .flat{color:var(--flat)!important}
   .rows{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;display:grid;gap:8px}
-  .row{display:flex;justify-content:space-between;font-size:14px}
+  .row{display:flex;justify-content:space-between;font-size:13px}
   .row span:first-child{color:var(--sub)}
   .row span:last-child{font-weight:600;font-variant-numeric:tabular-nums}
   .foot{margin:16px 4px 0;font-size:12px;color:var(--muted);line-height:1.6}
@@ -71,7 +71,7 @@
   <div class="grid" id="grid"></div>
   <div class="foot">
     가격 출처: Hyperliquid(삼성전자·SK하이닉스·현대차)·Bybit(삼성전기) 무기한 선물 호가 중간가 × 원/달러 환율 → 원화 환산 추정가. 10초마다 자동 갱신.<br>
-    종가·시가총액: 네이버 증권 KRX 정규장 기준, 장 마감 후 자동 반영(10분마다 확인).
+    비교 기준: 넥스트레이드(NXT) 애프터마켓 종가(20:00), 시가총액: KRX 정규장 종가 기준 — 네이버 증권, 자동 반영(10분마다 확인).
   </div>
 </div>
 
@@ -132,6 +132,7 @@ async function loadClose(){
       const s = STOCKS.find(x => x.code === d.code);
       if (!s || !d.close || !d.date) return;
       const a = { refDate: `${+d.date.slice(4,6)}/${+d.date.slice(6,8)}`, close: d.close };
+      if (d.basis) a.basis = d.basis;
       if (d.marketCap) a.marketCap = d.marketCap;
       if (d.low52) a.low52 = d.low52;
       if (d.high52) a.high52 = d.high52;
@@ -173,7 +174,7 @@ function render(s){
   const card = document.getElementById('c-'+s.id);
   const cfg = cfgOf(s);
   card.querySelector('.cap').textContent = fmtCap(cfg.marketCap);
-  card.querySelector('.chg .lbl').textContent = `${cfg.refDate} 종가 대비`;
+  card.querySelector('.chg .lbl').textContent = `${cfg.refDate} ${cfg.basis === 'NXT' ? 'NXT ' : ''}종가 대비`;
   if (s.usd == null || !fx) return;
 
   const krw = s.usd * fx;
