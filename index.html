@@ -1055,7 +1055,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 
 // ===== 24시간 삼전닉스 (live.html) =====
 function liveFit(){const f=document.getElementById('liveFrame');try{const d=f.contentDocument;if(d&&d.body){f.style.height=Math.max(600,d.documentElement.scrollHeight)+'px'}}catch(e){}}
-function liveStart(){const f=document.getElementById('liveFrame');if(!f.src){f.addEventListener('load',()=>{try{const s=f.contentDocument.createElement('style');s.textContent='body{background:transparent!important;padding:2px 0 8px!important}.wrap{margin:0!important}';f.contentDocument.head.appendChild(s)}catch(e){}liveFit();try{const d=f.contentDocument;new ResizeObserver(liveFit).observe(d.body)}catch(e){}});f.src='live.html'}else liveFit()}
+function liveStart(){const f=document.getElementById('liveFrame');if(!f.src){f.addEventListener('load',()=>{liveFit();try{const d=f.contentDocument;new ResizeObserver(liveFit).observe(d.body)}catch(e){}});f.src='live.html'}else liveFit()}
 ;(function(){const b=document.getElementById("tsw");if(!b)return;b.onclick=()=>{const on=document.documentElement.classList.toggle("dark");try{localStorage.setItem("kant-theme",on?"dark":"light")}catch(e){}}})();
 </script>
 </body>
