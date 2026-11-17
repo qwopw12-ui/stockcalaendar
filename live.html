@@ -72,7 +72,7 @@
   <div class="grid" id="grid"></div>
   <div class="foot">
     가격 출처: Hyperliquid (trade.xyz) 무기한 선물 중간가 × 원/달러 환율 → 원화 환산 추정가. 10초마다 자동 갱신.<br>
-    종가·시가총액·52주 범위는 카드 오른쪽 위 ⚙에서 직접 바꿀 수 있어요(이 브라우저에 저장됨).
+    종가·시가총액·52주 범위: 네이버 증권 KRX 정규장 기준, 장 마감 후 자동 반영(10분마다 확인).
   </div>
 </div>
 
@@ -80,20 +80,46 @@
 const API = 'https://api.hyperliquid.xyz/info';
 const REFRESH_SEC = 10;
 const FX_COIN = 'xyz:KRW';
+const CLOSE_API = '/api/krx-close';      // Netlify 함수: 네이버 KRX 종가
+const CLOSE_REFRESH_MIN = 10;
 
-// 기본값: 2026-11-17 KRX 종가 기준 (⚙에서 수정 가능)
+// 기본값: 자동 조회가 안 될 때만 쓰는 비상용 값 (2026-11-17 KRX 종가)
 const STOCKS = [
-  { id:'samsung', name:'삼성전자', coin:'xyz:SMSN', logo:'S', color:'#1428a0',
-    defaults:{ refDate:'11/17', close:190300, marketCap:1086528544669700, low52:94500, high52:374500 } },
-  { id:'skhynix', name:'SK하이닉스', coin:'xyz:SKHX', logo:'SK', color:'#e3001b',
-    defaults:{ refDate:'11/17', close:1098000, marketCap:774280309752000, low52:501000, high52:2987000 } },
+  { id:'samsung', code:'005930', name:'삼성전자', coin:'xyz:SMSN', logo:'S', color:'#1428a0',
+    defaults:{ refDate:'11/17', close:189800, marketCap:1109623679798400, low52:94500, high52:374500 } },
+  { id:'skhynix', code:'000660', name:'SK하이닉스', coin:'xyz:SKHX', logo:'SK', color:'#e3001b',
+    defaults:{ refDate:'11/17', close:1100000, marketCap:777479002000000, low52:501000, high52:2987000 } },
 ];
 
 const store = {
   get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
   set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 };
-STOCKS.forEach(s => { s.cfg = Object.assign({}, s.defaults, store.get('kl_cfg_'+s.id) || {}); s.last = null; });
+STOCKS.forEach(s => { s.manual = store.get('kl_manual_'+s.id); s.auto = store.get('kl_auto_'+s.id); s.last = null; });
+
+// 우선순위: 같은 기준일에 직접 고친 값 > 자동 조회값 > 직접 입력값 > 비상용 기본값
+function cfgOf(s){
+  if (s.manual && (!s.auto || s.manual.refDate === s.auto.refDate)) return Object.assign({}, s.defaults, s.auto || {}, s.manual);
+  if (s.auto) return Object.assign({}, s.defaults, s.auto);
+  return Object.assign({}, s.defaults, s.manual || {});
+}
+
+async function loadClose(){
+  try{
+    const r = await fetch(CLOSE_API + '?codes=' + STOCKS.map(s => s.code).join(','), { cache:'no-cache' });
+    const j = await r.json();
+    (j.stocks || []).forEach(d => {
+      const s = STOCKS.find(x => x.code === d.code);
+      if (!s || !d.close || !d.date) return;
+      const a = { refDate: `${+d.date.slice(4,6)}/${+d.date.slice(6,8)}`, close: d.close };
+      if (d.marketCap) a.marketCap = d.marketCap;
+      if (d.low52) a.low52 = d.low52;
+      if (d.high52) a.high52 = d.high52;
+      s.auto = a; store.set('kl_auto_'+s.id, a);
+      render(s);
+    });
+  }catch(e){ console.warn('종가 자동 조회 실패 — 저장된 값/기본값 사용', e); }
+}
 
 const won = n => Math.round(n).toLocaleString('ko-KR');
 function fmtCap(n){
@@ -123,14 +149,14 @@ function buildCards(){
         <div class="row"><span>52주 최저·최고</span><span class="range"></span></div>
       </div>
       <form class="panel">
-        <div class="hint">KRX 종가 기준값 — 장 마감 후 새 종가로 바꿔 주세요.</div>
+        <div class="hint">종가는 매일 자동으로 바뀌어요. 여기서 고친 값은 같은 기준일 동안만 이 브라우저에 적용돼요.</div>
         <label>기준일<input name="refDate" placeholder="11/17"></label>
         <label>종가 (원)<input name="close" inputmode="numeric"></label>
         <label>시가총액 (원)<input name="marketCap" inputmode="numeric"></label>
         <label>52주 최저<input name="low52" inputmode="numeric"></label>
         <label>52주 최고<input name="high52" inputmode="numeric"></label>
         <div class="btns">
-          <button type="button" class="reset cancel">기본값</button>
+          <button type="button" class="reset cancel">자동값으로</button>
           <button type="button" class="cancel close">닫기</button>
           <button type="submit" class="save">저장</button>
         </div>
@@ -141,15 +167,19 @@ function buildCards(){
     const card = document.getElementById('c-'+s.id);
     const form = card.querySelector('.panel');
     const fill = cfg => { for (const k in cfg) if (form.elements[k]) form.elements[k].value = typeof cfg[k]==='number' ? cfg[k].toLocaleString('ko-KR') : cfg[k]; };
-    card.querySelector('.gear').onclick = () => { fill(s.cfg); card.classList.toggle('editing'); };
+    card.querySelector('.gear').onclick = () => { fill(cfgOf(s)); card.classList.toggle('editing'); };
     card.querySelector('.close').onclick = () => card.classList.remove('editing');
-    card.querySelector('.reset').onclick = () => fill(s.defaults);
+    card.querySelector('.reset').onclick = () => {
+      s.manual = null; try{ localStorage.removeItem('kl_manual_'+s.id); }catch(e){}
+      fill(cfgOf(s)); render(s);
+    };
     form.onsubmit = e => {
       e.preventDefault();
-      const num = k => Number(String(form.elements[k].value).replace(/[^\d.]/g,'')) || s.defaults[k];
-      s.cfg = { refDate: form.elements.refDate.value.trim() || s.defaults.refDate,
+      const base = cfgOf(s);
+      const num = k => Number(String(form.elements[k].value).replace(/[^\d.]/g,'')) || base[k];
+      s.manual = { refDate: form.elements.refDate.value.trim() || base.refDate,
         close:num('close'), marketCap:num('marketCap'), low52:num('low52'), high52:num('high52') };
-      store.set('kl_cfg_'+s.id, s.cfg);
+      store.set('kl_manual_'+s.id, s.manual);
       card.classList.remove('editing');
       render(s);
     };
@@ -160,7 +190,7 @@ let fx = null, fxSource = '';
 
 function render(s){
   const card = document.getElementById('c-'+s.id);
-  const { cfg } = s;
+  const cfg = cfgOf(s);
   card.querySelector('.cap').textContent = fmtCap(cfg.marketCap);
   card.querySelector('.range').textContent = `₩${won(cfg.low52)} ~ ₩${won(cfg.high52)}`;
   card.querySelector('.chg .lbl').textContent = `${cfg.refDate} 종가 대비`;
@@ -238,6 +268,8 @@ async function refresh(){
 buildCards();
 STOCKS.forEach(render);
 let left = REFRESH_SEC;
+loadClose();
+setInterval(loadClose, CLOSE_REFRESH_MIN * 60e3);
 refresh();
 setInterval(() => {
   left -= 1;
