@@ -117,6 +117,16 @@ export default async (req) => {
   const codes = (url.searchParams.get('codes') || '005930,000660')
     .split(',').map(s => s.trim()).filter(s => /^\d{6}$/.test(s)).slice(0, 10);
 
+  if (url.searchParams.get('raw') === '1') {
+    const raw = await Promise.all(codes.map(async code => {
+      const [poll, rows] = await Promise.all([
+        get(`https://polling.finance.naver.com/api/realtime/domestic/stock/${code}`).then(j => j.datas[0]).catch(e => ({ err: e.message })),
+        dailyRows(code).catch(e => [{ err: e.message }]),
+      ]);
+      return { code, krxRows: rows.slice(-6), closePrice: poll.closePrice, marketStatus: poll.marketStatus, localTradedAt: poll.localTradedAt, over: poll.overMarketPriceInfo };
+    }));
+    return new Response(JSON.stringify(raw), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Netlify-CDN-Cache-Control': 'no-store' } });
+  }
   const stocks = await Promise.all(codes.map(one));
   const ok = stocks.some(s => s.close && s.date);
   return json({ ok, fetchedAt: new Date().toISOString(), source: 'Naver Finance (KRX 정규장 일봉)', stocks },
