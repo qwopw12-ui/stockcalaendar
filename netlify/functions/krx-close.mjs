@@ -89,6 +89,17 @@ async function one(code) {
 
 export default async (req) => {
   const url = new URL(req.url);
+  if (url.searchParams.get('debug') === '1') {
+    const code = url.searchParams.get('code') || '005930';
+    const grab = async u => { try { const r = await fetch(u, { headers: { 'User-Agent': UA, 'Referer': 'https://m.stock.naver.com/' } }); return (await r.text()).slice(0, 6000); } catch (e) { return 'ERR ' + e.message; } };
+    const raw = {
+      basic: await grab(`https://m.stock.naver.com/api/stock/${code}/basic`),
+      integration: await grab(`https://m.stock.naver.com/api/stock/${code}/integration`),
+      sise: await grab(`https://api.finance.naver.com/siseJson.naver?symbol=${code}&requestType=1&startTime=20261113&endTime=20261118&timeframe=day`),
+      polling: await grab(`https://polling.finance.naver.com/api/realtime/domestic/stock/${code}`),
+    };
+    return new Response(JSON.stringify(raw), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Netlify-CDN-Cache-Control': 'no-store' } });
+  }
   const codes = (url.searchParams.get('codes') || '005930,000660')
     .split(',').map(s => s.trim()).filter(s => /^\d{6}$/.test(s)).slice(0, 10);
 
