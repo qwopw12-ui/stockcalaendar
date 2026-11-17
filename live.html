@@ -91,7 +91,7 @@ const store = {
   get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
   set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 };
-STOCKS.forEach(s => { s.manual = store.get('kl_manual_'+s.id); s.auto = store.get('kl_auto_'+s.id); s.last = null; });
+STOCKS.forEach(s => { s.manual = null; try{ localStorage.removeItem('kl_manual_'+s.id); }catch(e){} s.auto = store.get('kl_auto_'+s.id); s.last = null; });
 
 // 우선순위: 같은 기준일에 직접 고친 값 > 자동 조회값 > 직접 입력값 > 비상용 기본값
 function cfgOf(s){
@@ -125,13 +125,11 @@ function fmtCap(n){
   return `${eok.toLocaleString('ko-KR')}억 원`;
 }
 
-const gearSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
 
 function buildCards(){
   const grid = document.getElementById('grid');
   grid.innerHTML = STOCKS.map(s => `
     <div class="card" id="c-${s.id}">
-      <button class="gear" title="기준값 설정" data-id="${s.id}">${gearSvg}</button>
       <div class="head">
         <div class="logo" style="background:${s.color}">${s.logo}</div>
         <div class="name">${s.name}</div>
@@ -142,40 +140,7 @@ function buildCards(){
       <div class="rows">
         <div class="row"><span>시가총액</span><span class="cap"></span></div>
       </div>
-      <form class="panel">
-        <div class="hint">종가는 매일 자동으로 바뀌어요. 여기서 고친 값은 같은 기준일 동안만 이 브라우저에 적용돼요.</div>
-        <label>기준일<input name="refDate" placeholder="11/17"></label>
-        <label>종가 (원)<input name="close" inputmode="numeric"></label>
-        <label>시가총액 (원)<input name="marketCap" inputmode="numeric"></label>
-        <div class="btns">
-          <button type="button" class="reset cancel">자동값으로</button>
-          <button type="button" class="cancel close">닫기</button>
-          <button type="submit" class="save">저장</button>
-        </div>
-      </form>
     </div>`).join('');
-
-  STOCKS.forEach(s => {
-    const card = document.getElementById('c-'+s.id);
-    const form = card.querySelector('.panel');
-    const fill = cfg => { for (const k in cfg) if (form.elements[k]) form.elements[k].value = typeof cfg[k]==='number' ? cfg[k].toLocaleString('ko-KR') : cfg[k]; };
-    card.querySelector('.gear').onclick = () => { fill(cfgOf(s)); card.classList.toggle('editing'); };
-    card.querySelector('.close').onclick = () => card.classList.remove('editing');
-    card.querySelector('.reset').onclick = () => {
-      s.manual = null; try{ localStorage.removeItem('kl_manual_'+s.id); }catch(e){}
-      fill(cfgOf(s)); render(s);
-    };
-    form.onsubmit = e => {
-      e.preventDefault();
-      const base = cfgOf(s);
-      const num = k => Number(String(form.elements[k].value).replace(/[^\d.]/g,'')) || base[k];
-      s.manual = { refDate: form.elements.refDate.value.trim() || base.refDate,
-        close:num('close'), marketCap:num('marketCap') };
-      store.set('kl_manual_'+s.id, s.manual);
-      card.classList.remove('editing');
-      render(s);
-    };
-  });
 }
 
 let fx = null, fxSource = '';
