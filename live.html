@@ -101,6 +101,8 @@
   <iframe class="nightf usf" title="나스닥100" src="usfut.html?coin=xyz:XYZ100&name=NASDAQ100"></iframe>
   <div class="sec-h">S&amp;P500</div>
   <iframe class="nightf usf" title="S&P500" src="usfut.html?coin=xyz:SP500&name=S%26P500"></iframe>
+  <div class="sec-h">미국 빅테크 <small>정규장 종가 대비 · 달러</small></div>
+  <div class="grid" id="biggrid"></div>
 </div>
 
 <script>
@@ -300,6 +302,15 @@ const US = [
   { id:'mu',   name:'마이크론', tk:'MU',   coin:'xyz:MU',   logo:'MU', color:'#0067b1' },
   { id:'sndk', name:'샌디스크', tk:'SNDK', coin:'xyz:SNDK', logo:'SD', color:'#c8102e' },
   { id:'intc', name:'인텔', tk:'INTC', coin:'xyz:INTC', logo:'IN', color:'#0068b5' },
+  { id:'aapl', name:'애플', tk:'AAPL', coin:'xyz:AAPL', logo:'AP', color:'#111111', grid:'biggrid' },
+  { id:'tsla', name:'테슬라', tk:'TSLA', coin:'xyz:TSLA', logo:'TS', color:'#cc0000', grid:'biggrid' },
+  { id:'meta', name:'메타', tk:'META', coin:'xyz:META', logo:'MT', color:'#0866ff', grid:'biggrid' },
+  { id:'googl', name:'구글', tk:'GOOGL', coin:'xyz:GOOGL', logo:'G', color:'#4285f4', grid:'biggrid' },
+  { id:'msft', name:'마이크로소프트', tk:'MSFT', coin:'xyz:MSFT', logo:'MS', color:'#00a4ef', grid:'biggrid' },
+  { id:'amzn', name:'아마존', tk:'AMZN', coin:'xyz:AMZN', logo:'AM', color:'#ff9900', grid:'biggrid' },
+  { id:'spcx', name:'스페이스X', tk:'SPCX', coin:'xyz:SPCX', logo:'SX', color:'#000000', grid:'biggrid' },
+  { id:'pltr', name:'팔란티어', tk:'PLTR', coin:'xyz:PLTR', logo:'PL', color:'#101113', grid:'biggrid' },
+  { id:'orcl', name:'오라클', tk:'ORCL', lg:'ORCL.K', coin:'xyz:ORCL', logo:'OR', color:'#c74634', grid:'biggrid' },
 ];
 function nyParts(ms){
   const p = {}; new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23',weekday:'short'})
@@ -338,16 +349,17 @@ async function loadUsClose(){
   }));
 }
 function buildUs(){
-  document.getElementById('usgrid').innerHTML = US.map(s => `
+  const card = s => `
     <div class="card" id="c-${s.id}">
       <div class="head">
-        <div class="logo${s.nologo?' fb':''}" style="--c:${s.color}">${s.nologo?'':`<img src="https://ssl.pstatic.net/imgstock/fn/real/logo/stock/Stock${s.tk}.O.svg" alt="${s.name} 로고" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('fb');this.remove()">`}<span>${s.logo}</span></div>
+        <div class="logo${s.nologo?' fb':''}" style="--c:${s.color}">${s.nologo?'':`<img src="https://ssl.pstatic.net/imgstock/fn/real/logo/stock/Stock${s.lg || s.tk + '.O'}.svg" alt="${s.name} 로고" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('fb');this.remove()">`}<span>${s.logo}</span></div>
         <div class="name">${s.name} <span style="font-size:15px;color:var(--muted);font-weight:600">${s.tk}</span></div>
       </div>
       <div class="src"><span class="dot stale"></span><span class="srcname">Hyperliquid</span>해외 실시간 추정가</div>
       <div class="price"><span class="v">—</span></div>
       <div class="chg"><span class="lbl"></span><span class="amt"></span><span class="sep">|</span><span class="pct"></span></div>
-    </div>`).join('');
+    </div>`;
+  ['usgrid','biggrid'].forEach(g => { const el = document.getElementById(g); if (el) el.innerHTML = US.filter(s => (s.grid || 'usgrid') === g).map(card).join(''); });
 }
 function renderUs(s){
   const card = document.getElementById('c-'+s.id); if (!card) return;
