@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>미국 지수 선물 (Hyperliquid)</title>
+<style>
+  :root { --bg:#ffffff; --ink:#191f28; --sub:#8b95a1; --grid:#eef0f3; --base:#b0b8c1; --up:#f04452; --down:#3182f6;
+          --tagbg:#f2f4f6; --tagink:#4e5968; --live:#12b886; }
+  html.kdark { --bg:#17171c; --ink:#e9ecef; --sub:#7e8590; --grid:#26272e; --base:#5b616b; --up:#f25563; --down:#4c8ff7;
+               --tagbg:#24252c; --tagink:#aab1bb; --live:#38d9a9; color-scheme:dark; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:transparent; color:var(--ink);
+    font-family:"Pretendard","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+  .wrap { max-width:1000px; margin:0 auto; padding:4px 0 12px; }
+  .card { position:relative; height:440px; border-radius:16px; overflow:hidden; background:var(--bg);
+          box-shadow:0 1px 3px rgba(0,0,0,.06); border:1px solid var(--grid); }
+  #chart { position:absolute; inset:0; }
+  canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .head { position:absolute; left:18px; top:14px; z-index:2; pointer-events:none; }
+  .name { font-size:13px; font-weight:600; color:var(--sub); }
+  .px { font-size:26px; font-weight:800; font-variant-numeric:tabular-nums; margin-top:2px; }
+  .chg { font-size:13px; font-weight:700; margin-left:6px; }
+  .up { color:var(--up); } .down { color:var(--down); } .flat { color:var(--sub); }
+  .tag { position:absolute; right:16px; top:16px; z-index:2; font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px;
+         background:var(--tagbg); color:var(--tagink); max-width:60%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tag.live { color:var(--live); } .tag.error { color:var(--up); }
+  .overlay { position:absolute; inset:84px 0 30px; z-index:1; display:none; align-items:center; justify-content:center;
+             color:var(--sub); text-align:center; font-size:14px; padding:0 20px; }
+  .overlay b { display:block; font-size:16px; margin-bottom:6px; color:var(--ink); }
+  @media (max-width:600px) { .card { height:360px; border-radius:0; border-left:0; border-right:0; } .px { font-size:22px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" id="card">
+    <div id="chart"></div>
+    <div class="head"><div class="name" id="nm">--</div><div class="px" id="px">--</div></div>
+    <div class="tag" id="tag">연결 중…</div>
+    <div class="overlay" id="overlay"><div><b id="ovHead">⏳ 불러오는 중</b><span id="ovMsg"></span></div></div>
+  </div>
+</div>
+
+<script>
+// 데이터: 한국투자증권 KIS Open API — KRX 야간선물 실시간 체결(H0MFCNT0), 5초마다 갱신
+// 기준선/색: 전일(주간장) 종가 — 위는 빨강, 아래는 파랑. 차트는 외부 라이브러리 없이 캔버스로 직접 그림
+const POLL_MS = 5000;
+const KST = 9 * 3600;
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, '0');
+const f2 = v => (v == null || isNaN(v)) ? '--' : Number(v).toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const FONT = '"Pretendard","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+function rgba(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+
+const box = $('chart');
+const cv = document.createElement('canvas'); box.appendChild(cv);
+const ctx = cv.getContext('2d');
+let S = null, hoverX = null;
+
+function niceStep(range, target) {
+  const raw = range / target, mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
+  return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
+}
+
+function draw() {
+  const dpr = window.devicePixelRatio || 1, W = box.clientWidth, H = box.clientHeight;
+  if (!W || !H) return;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  if (!S || S.start == null) return;
+  const C = { sub: css('--sub'), grid: css('--grid'), base: css('--base'), up: css('--up'), down: css('--down'), bg: css('--bg') };
+
+  const narrow = W < 600;
+  const x0 = 16, x1 = W - (narrow ? 66 : 74), y0 = narrow ? 76 : 84, y1 = H - 30, span = S.end - S.start;
+  const X = t => x0 + (t - S.start) / span * (x1 - x0);
+  const pts = [];
+  for (const [t, p] of S.points) {
+    const x = X(t), cell = Math.floor(x * 2);   // 0.5px 칸 단위로 묶기
+    if (pts.length && pts[pts.length - 1][2] === cell) pts[pts.length - 1] = [x, p, cell]; else pts.push([x, p, cell]);
+  }
+  const base = S.base ?? (pts.length ? pts[0][1] : null);
+  let lo = Infinity, hi = -Infinity;
+  for (const [, p] of pts) { if (p < lo) lo = p; if (p > hi) hi = p; }
+  if (base != null) { lo = Math.min(lo, base); hi = Math.max(hi, base); }
+  if (!isFinite(lo)) return;
+  if (hi - lo < 4) { const m = (hi + lo) / 2; lo = m - 2; hi = m + 2; }
+  const pv = (hi - lo) * 0.08; lo -= pv; hi += pv;
+  const Y = p => y1 - (p - lo) / (hi - lo) * (y1 - y0);
+
+  // 가로 격자 + 오른쪽 가격축
+  ctx.font = `11px ${FONT}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.lineWidth = 1;
+  const step = niceStep(hi - lo, narrow ? 4 : 5), dec = step < 1 ? 2 : 1;
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+    const y = Math.round(Y(v)) + .5;
+    ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+    ctx.fillStyle = C.sub; ctx.fillText(v.toFixed(dec), x1 + 8, y);
+  }
+  // 시간축 (2시간 간격 라벨)
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let t = S.start, i = 0; t <= S.end; t += 3600, i++) {
+    if (i % 2) continue;
+    const h = new Date((t + KST) * 1000).getUTCHours();
+    ctx.fillStyle = C.sub; ctx.fillText(`${pad(h)}:00`, Math.min(Math.max(X(t), x0 + 16), x1 - 16), y1 + 10);
+  }
+
+  // 전일 종가 점선
+  const yb = base != null ? Math.round(Y(base)) + .5 : null;
+  if (yb != null) {
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = C.base;
+    ctx.beginPath(); ctx.moveTo(x0, yb); ctx.lineTo(x1, yb); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (!pts.length) return;
+
+  // 화면용 가벼운 다듬기(±2px 가우시안) — 마지막 현재가는 정확히 그대로
+  const xs = pts.map(p => p[0]), raw = pts.map(p => Y(p[1]));
+  const ys = raw.map((_, i) => {
+    if (i === raw.length - 1) return raw[i];
+    let sw = 0, sv = 0;
+    for (let j = Math.max(0, i - 4); j <= Math.min(raw.length - 1, i + 4); j++) {
+      const d = xs[j] - xs[i], w = Math.exp(-d * d / 9.7); sw += w; sv += w * raw[j];
+    }
+    return sv / sw;
+  });
+  const path = () => {
+    ctx.moveTo(xs[0], ys[0]);
+    for (let i = 1; i < xs.length - 1; i++) ctx.quadraticCurveTo(xs[i], ys[i], (xs[i] + xs[i + 1]) / 2, (ys[i] + ys[i + 1]) / 2);
+    ctx.lineTo(xs[xs.length - 1], ys[ys.length - 1]);
+  };
+  const yEdge = yb ?? y1;
+  // 영역 + 선: 전일 종가 위는 빨강, 아래는 파랑
+  for (const [color, top, bot] of [[C.up, 0, yEdge], [C.down, yEdge, H]]) {
+    ctx.save(); ctx.beginPath(); ctx.rect(0, top, W, bot - top); ctx.clip();
+    const gr = ctx.createLinearGradient(0, color === C.up ? y0 : y1, 0, yEdge);
+    gr.addColorStop(0, rgba(color, .18)); gr.addColorStop(1, rgba(color, .02));
+    ctx.beginPath(); path(); ctx.lineTo(xs[xs.length - 1], yEdge); ctx.lineTo(xs[0], yEdge); ctx.closePath();
+    ctx.fillStyle = gr; ctx.fill();
+    ctx.beginPath(); path(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = color; ctx.lineWidth = 2.2; ctx.stroke();
+    ctx.restore();
+  }
+  // 전일 종가 라벨 (선과 겹치지 않게 빈 쪽에)
+  if (yb != null) {
+    ctx.font = `11px ${FONT}`; ctx.textAlign = 'right'; ctx.fillStyle = C.sub;
+    const near = ys.filter((_, i) => xs[i] > x1 - 150);
+    const above = !near.length || Math.min(...near) > yb - 16;
+    ctx.textBaseline = above ? 'bottom' : 'top';
+    ctx.fillText(BASE_LABEL + ' ' + f2(base), x1 - 4, above ? yb - 4 : yb + 4);
+  }
+
+  // 현재가 점 + 라벨
+  const lx = xs[xs.length - 1], ly = raw[raw.length - 1], lp = pts[pts.length - 1][1];
+  const lc = base == null || lp >= base ? C.up : C.down;
+  ctx.fillStyle = rgba(lc, .25); ctx.beginPath(); ctx.arc(lx, ly, S.live ? 8 : 6, 0, 7); ctx.fill();
+  ctx.fillStyle = lc; ctx.beginPath(); ctx.arc(lx, ly, 4, 0, 7); ctx.fill();
+  ctx.font = `bold 11px ${FONT}`; const lab = lp.toFixed(2), tw = ctx.measureText(lab).width + 12;
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x1 + 3, ly - 10, tw, 20, 6) : ctx.rect(x1 + 3, ly - 10, tw, 20); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(lab, x1 + 9, ly);
+
+  // 마우스/손가락 올리면 시각·가격 표시
+  if (hoverX != null && hoverX >= Math.max(x0, xs[0]) && hoverX <= x1) {
+    let k = 0; for (let i = 0; i < xs.length; i++) { if (xs[i] <= hoverX) k = i; else break; }
+    const hx = xs[k], hy = ys[k], hp = pts[k][1];
+    ctx.strokeStyle = C.base; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(Math.round(hx) + .5, y0); ctx.lineTo(Math.round(hx) + .5, y1); ctx.stroke(); ctx.setLineDash([]);
+    const hc = base == null || hp >= base ? C.up : C.down;
+    ctx.fillStyle = C.bg; ctx.beginPath(); ctx.arc(hx, hy, 5, 0, 7); ctx.fill();
+    ctx.strokeStyle = hc; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(hx, hy, 5, 0, 7); ctx.stroke(); ctx.lineWidth = 1;
+    const t = S.start + (hx - x0) / (x1 - x0) * span, d = new Date((t + KST) * 1000);
+    const tip = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}  ${f2(hp)}`;
+    ctx.font = `bold 12px ${FONT}`;
+    const w = ctx.measureText(tip).width + 16, tx = Math.min(Math.max(hx - w / 2, x0), x1 - w), ty = y0 - 26;
+    ctx.fillStyle = 'rgba(25,31,40,.88)';
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(tx, ty, w, 22, 6) : ctx.rect(tx, ty, w, 22); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(tip, tx + 8, ty + 11);
+  }
+}
+let raf = 0; const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); };
+new ResizeObserver(redraw).observe(box);
+new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+const card = $('card');
+card.addEventListener('mousemove', e => { hoverX = e.clientX - card.getBoundingClientRect().left; redraw(); });
+card.addEventListener('mouseleave', () => { hoverX = null; redraw(); });
+card.addEventListener('touchmove', e => { hoverX = e.touches[0].clientX - card.getBoundingClientRect().left; redraw(); }, { passive: true });
+card.addEventListener('touchend', () => { hoverX = null; redraw(); });
+
+function setTag(text, cls = '') { $('tag').textContent = text; $('tag').className = 'tag ' + cls; }
+function overlay(show, head = '', msg = '') {
+  $('overlay').style.display = show ? 'flex' : 'none'; $('ovHead').textContent = head; $('ovMsg').textContent = msg;
+}
+
+const Q = new URLSearchParams(location.search);
+const COIN = Q.get('coin') || 'xyz:XYZ100', NAME = Q.get('name') || 'NASDAQ100';
+const BASE_LABEL = '24시간 전';
+$('nm').textContent = NAME; document.title = NAME;
+const API = 'https://api.hyperliquid.xyz/info';
+const post = b => fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b) }).then(r => r.json());
+// 표시 구간: 한국시간 18:00 ~ 익일 06:00 (06:00~18:00 사이에는 직전 밤 구간을 보여줌)
+function sessionWindow() {
+  const now = Date.now() / 1000, k = new Date((now + KST) * 1000);
+  let d = Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate()) / 1000 - KST;   // 오늘 00:00 KST (UTC초)
+  if (k.getUTCHours() < 18) d -= 86400;                                                // 18시 전이면 어제 18:00 시작
+  const start = d + 18 * 3600;
+  return { start, end: start + 12 * 3600, live: now >= start && now < start + 12 * 3600 };
+}
+let lastKey = '', cache = { start: null, points: [] };
+async function poll() {
+  const w = sessionWindow();
+  try {
+    if (cache.start !== w.start) cache = { start: w.start, points: [] };
+    const from = cache.points.length ? (cache.points[cache.points.length - 1][0] - 60) * 1000 : w.start * 1000;
+    const k = await post({ type:'candleSnapshot', req:{ coin: COIN, interval:'1m', startTime: from, endTime: Math.min(Date.now(), w.end * 1000) } });
+    const m = new Map(cache.points.map(p => [p[0], p]));
+    for (const c of k) { const t = c.t / 1000; if (t >= w.start && t < w.end) m.set(t, [t, +c.c, +c.o]); }
+    cache.points = [...m.values()].sort((a, b) => a[0] - b[0]);
+    let last = cache.points.length ? cache.points[cache.points.length - 1][1] : null, base = null;
+    // 하이퍼리퀴드 화면과 같은 기준: 마크가격 vs 24시간 전 가격(prevDayPx)
+    const [meta, ctxs] = await post({ type:'metaAndAssetCtxs', dex:'xyz' });
+    const i = meta.universe.findIndex(u => u.name === COIN);
+    if (i >= 0) { const px = +ctxs[i].markPx, pv = +ctxs[i].prevDayPx; if (px > 0) last = px; if (pv > 0) base = pv; }
+    const pts = cache.points.map(p => [p[0], p[1]]);
+    if (w.live && last != null && pts.length) pts.push([Math.min(Date.now() / 1000, w.end), last]);
+    const st = { start: w.start, end: w.end, points: pts, base, last, live: w.live };
+    const key = JSON.stringify([st.start, pts.length, last, base, st.live]);
+    if (key !== lastKey) { lastKey = key; S = st; redraw(); }
+    if (last != null && base) {
+      const c = last - base, r = c / base * 100, cls = c > 0 ? 'up' : c < 0 ? 'down' : 'flat', sg = c > 0 ? '+' : '';
+      $('px').innerHTML = `${f2(last)}<span class="chg ${cls}">${sg}${f2(c)} (${sg}${r.toFixed(2)}%)</span>`;
+    }
+    if (pts.length) overlay(false); else overlay(true, '⏳ 데이터 대기 중', '18:00 이후 첫 체결이 들어오면 차트가 그려집니다');
+    setTag(w.live ? '● 실시간' : '장 종료', w.live ? 'live' : '');
+  } catch (e) { setTag('⚠ 불러오기 실패', 'error'); }
+}
+poll();
+setInterval(poll, POLL_MS);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+</script>
+</body>
+</html>

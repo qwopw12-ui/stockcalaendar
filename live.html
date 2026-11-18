@@ -97,6 +97,10 @@
   <div class="grid" id="usgrid"></div>
   <div class="sec-h">코스피200 야간선물</div>
   <iframe id="nightFrame" class="nightf" title="코스피200 야간선물" src="night.html"></iframe>
+  <div class="sec-h">나스닥100 <small>Hyperliquid 24시간 대비</small></div>
+  <iframe class="nightf usf" title="나스닥100" src="usfut.html?coin=xyz:XYZ100&name=NASDAQ100"></iframe>
+  <div class="sec-h">S&amp;P500 <small>Hyperliquid 24시간 대비</small></div>
+  <iframe class="nightf usf" title="S&P500" src="usfut.html?coin=xyz:SP500&name=S%26P500"></iframe>
 </div>
 
 <script>
@@ -426,6 +430,16 @@ refreshSox(); setInterval(refreshSox, 30000);
     }catch(e){}
   };
   read(); setInterval(read, 2000);
+})();
+// ===== 미국 지수 차트 (usfut.html) — 폭·다크모드 맞추기 =====
+(function(){
+  document.querySelectorAll('iframe.usf').forEach(f => {
+    const sync = () => { try{ const d = f.contentDocument; if (d && d.documentElement){ d.documentElement.classList.toggle('kdark', document.documentElement.classList.contains('kdark')); if (!d.getElementById('fullw')){ const s=d.createElement('style'); s.id='fullw'; s.textContent='.wrap{max-width:none!important;padding-top:0!important}'; d.head.appendChild(s);} } }catch(e){} };
+    const fit = () => { try{ const d = f.contentDocument; if (d && d.body) f.style.height = d.documentElement.scrollHeight + 'px'; }catch(e){} };
+    f.addEventListener('load', () => { sync(); fit(); try{ new ResizeObserver(fit).observe(f.contentDocument.body); }catch(e){} });
+    try{ new MutationObserver(sync).observe(document.documentElement, {attributes:true, attributeFilter:['class']}); }catch(e){}
+    sync(); fit(); setTimeout(()=>{sync();fit();},1500);
+  });
 })();
 </script>
 </body>
