@@ -61,6 +61,9 @@
   .panel button{font:inherit;font-size:13px;padding:7px 14px;border-radius:8px;border:0;cursor:pointer}
   .panel .save{background:#3182f6;color:#fff} .panel .cancel{background:#f2f4f6;color:var(--sub)}
   .panel .hint{font-size:12px;color:var(--muted);margin:2px 0 8px}
+  .sec-h{margin:26px 4px 12px;font-size:17px;font-weight:700;color:var(--ink)}
+  .sec-h small{font-size:12px;font-weight:500;color:var(--muted);margin-left:6px}
+  .krw{font-size:14px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
@@ -69,6 +72,8 @@
     <div>원/달러 <b id="fx">—</b></div>
   </div>
   <div class="grid" id="grid"></div>
+  <div class="sec-h">미국 반도체 <small>정규장 종가 대비 · 달러</small></div>
+  <div class="grid" id="usgrid"></div>
 </div>
 
 <script>
@@ -260,6 +265,97 @@ setInterval(() => {
   left -= 1;
   if (left <= 0) { left = REFRESH_SEC; refresh(); }
 }, 1000);
+// ===== 미국 반도체 (Hyperliquid xyz 무기한 선물, 미국 정규장 종가 대비) =====
+const US = [
+  { id:'nvda', name:'엔비디아', tk:'NVDA', coin:'xyz:NVDA', logo:'NV', color:'#76b900' },
+  { id:'mu',   name:'마이크론', tk:'MU',   coin:'xyz:MU',   logo:'MU', color:'#0067b1' },
+  { id:'sndk', name:'샌디스크', tk:'SNDK', coin:'xyz:SNDK', logo:'SD', color:'#c8102e' },
+];
+function nyParts(ms){
+  const p = {}; new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23',weekday:'short'})
+    .formatToParts(new Date(ms)).forEach(x => p[x.type] = x.value);
+  return p;
+}
+function nyToUtc(y,m,d,h,mi){            // 뉴욕 현지 시각 → UTC ms (서머타임 자동 반영)
+  let g = Date.UTC(y,m-1,d,h,mi);
+  for (let i=0;i<2;i++){ const p = nyParts(g); const asUtc = Date.UTC(+p.year,+p.month-1,+p.day,+p.hour,+p.minute); g += Date.UTC(y,m-1,d,h,mi) - asUtc; }
+  return g;
+}
+function lastUsClose(){                   // 가장 최근 미국 정규장 마감(16:00 ET) 시각
+  const now = Date.now();
+  for (let k=0;k<8;k++){
+    const p = nyParts(now - k*86400e3);
+    if (p.weekday === 'Sat' || p.weekday === 'Sun') continue;
+    const t = nyToUtc(+p.year,+p.month,+p.day,16,0);
+    if (t <= now) return { t, label: `${+p.month}/${+p.day}` };
+  }
+  return null;
+}
+let usBase = null;
+async function loadUsClose(){
+  const b = lastUsClose(); if (!b) return;
+  if (usBase && usBase.t === b.t && US.every(s => s.close)) return;
+  usBase = b;
+  await Promise.all(US.map(async s => {
+    try{
+      const r = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ type:'candleSnapshot', req:{ coin:s.coin, interval:'1m', startTime:b.t-5*60e3, endTime:b.t+60e3 } }) });
+      const k = await r.json();
+      const c = k.filter(x => x.t < b.t).pop();      // 16:00 직전 1분봉 종가
+      if (c) s.close = Number(c.c);
+    }catch(e){}
+    renderUs(s);
+  }));
+}
+function buildUs(){
+  document.getElementById('usgrid').innerHTML = US.map(s => `
+    <div class="card" id="c-${s.id}">
+      <div class="head">
+        <div class="logo fb" style="--c:${s.color}"><span>${s.logo}</span></div>
+        <div class="name">${s.name} <span style="font-size:15px;color:var(--muted);font-weight:600">${s.tk}</span></div>
+      </div>
+      <div class="src"><span class="dot stale"></span><span class="srcname">Hyperliquid</span>해외 실시간 추정가</div>
+      <div class="price"><span class="v">—</span></div>
+      <div class="krw"></div>
+      <div class="chg"><span class="lbl"></span><span class="amt"></span><span class="sep">|</span><span class="pct"></span></div>
+    </div>`).join('');
+}
+function renderUs(s){
+  const card = document.getElementById('c-'+s.id); if (!card) return;
+  card.querySelector('.chg .lbl').textContent = usBase ? `미국 ${usBase.label} 종가 대비` : '';
+  if (s.usd == null) return;
+  const v = card.querySelector('.price .v');
+  if (s.last != null && s.usd !== s.last) {
+    v.classList.remove('flash-up','flash-down'); void v.offsetWidth;
+    v.classList.add(s.usd > s.last ? 'flash-up' : 'flash-down');
+    setTimeout(() => v.classList.remove('flash-up','flash-down'), 60);
+  }
+  v.textContent = '$' + s.usd.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  s.last = s.usd;
+  card.querySelector('.krw').textContent = fx ? `≈ ₩${won(s.usd * fx)}` : '';
+  if (s.close){
+    const diff = s.usd - s.close, pct = diff / s.close * 100;
+    const cls = Math.abs(diff) < 0.005 ? 'flat' : diff > 0 ? 'up' : 'down';
+    const arrow = cls==='up' ? '▲' : cls==='down' ? '▼' : '';
+    const amt = card.querySelector('.chg .amt'), p = card.querySelector('.chg .pct');
+    amt.className = 'amt ' + cls; p.className = 'pct ' + cls;
+    amt.textContent = `${arrow} $${Math.abs(diff).toFixed(2)}`;
+    p.textContent = `${pct>0?'+':''}${pct.toFixed(2)}%`;
+  }
+  const dot = card.querySelector('.dot');
+  dot.classList.remove('stale','pulse'); void dot.offsetWidth; dot.classList.add('pulse');
+}
+async function refreshUs(){
+  try{
+    const res = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type:'metaAndAssetCtxs', dex:'xyz' }) });
+    const [meta, ctxs] = await res.json();
+    meta.universe.forEach((u,i) => { const s = US.find(x => x.coin === u.name); if (s){ const px = Number(ctxs[i].midPx || ctxs[i].markPx); if (px > 0) s.usd = px; } });
+    US.forEach(renderUs);
+  }catch(e){ document.querySelectorAll('#usgrid .dot').forEach(d => d.classList.add('stale')); }
+}
+buildUs();
+loadUsClose().then(refreshUs);
+setInterval(() => { loadUsClose(); refreshUs(); }, REFRESH_SEC * 1000);
 </script>
 </body>
 </html>
