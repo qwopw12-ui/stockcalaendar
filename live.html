@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>해외 실시간 추정가 — 삼성전자 · SK하이닉스 · 삼성전기 · 현대차</title>
+<title>해외 실시간 추정가 — 삼성전자 · SK하이닉스</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
@@ -84,10 +84,6 @@ const STOCKS = [
     defaults:{ refDate:'11/17', close:190300, marketCap:1112546819102400, low52:94500, high52:374500 } },
   { id:'skhynix', code:'000660', name:'SK하이닉스', coin:'xyz:SKHX', logo:'SK', color:'#e3001b',
     defaults:{ refDate:'11/17', close:1098000, marketCap:776065404114000, low52:501000, high52:2987000 } },
-  { id:'semco', code:'009150', name:'삼성전기', src:'bybit', symbol:'SAMSUNGEMUSDT', gateContract:'SAMSUNGEM_USDT', logo:'SE', color:'#1428a0',
-    defaults:{ refDate:'11/17', close:754000, marketCap:56319046784000, low52:201000, high52:2417000 } },
-  { id:'hyundai', code:'005380', name:'현대차', coin:'xyz:HYUNDAI', logo:'H', color:'#002c5f',
-    defaults:{ refDate:'11/17', close:259000, marketCap:52697821428000, low52:253500, high52:783000 } },
 ];
 
 // 바이비트 → 실패 시 게이트에서 호가 중간가(USD) 조회
