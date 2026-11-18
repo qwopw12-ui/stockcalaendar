@@ -192,7 +192,7 @@ function overlay(show, head = '', msg = '') {
 
 const Q = new URLSearchParams(location.search);
 const COIN = Q.get('coin') || 'xyz:XYZ100', NAME = Q.get('name') || 'NASDAQ100';
-const BASE_LABEL = '24시간 전';
+const BASE_LABEL = '06:59 기준';
 $('nm').textContent = NAME; document.title = NAME;
 const API = 'https://api.hyperliquid.xyz/info';
 const post = b => fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b) }).then(r => r.json());
@@ -205,6 +205,13 @@ function sessionWindow() {
   return { start, end: start + 12 * 3600, live: now >= start && now < start + 12 * 3600 };
 }
 let lastKey = '', cache = { start: null, points: [] };
+let baseCache = { t: null, v: null };
+function baseTime() {                       // 가장 최근의 한국시간 06:59 (그 1분봉이 끝난 뒤부터 사용)
+  const now = Date.now() / 1000, k = new Date((now + KST) * 1000);
+  let t = Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate()) / 1000 - KST + 6 * 3600 + 59 * 60;
+  if (now < t + 60) t -= 86400;
+  return t;
+}
 async function poll() {
   const w = sessionWindow();
   try {
@@ -214,11 +221,19 @@ async function poll() {
     const m = new Map(cache.points.map(p => [p[0], p]));
     for (const c of k) { const t = c.t / 1000; if (t >= w.start && t < w.end) m.set(t, [t, +c.c, +c.o]); }
     cache.points = [...m.values()].sort((a, b) => a[0] - b[0]);
-    let last = cache.points.length ? cache.points[cache.points.length - 1][1] : null, base = null;
-    // 하이퍼리퀴드 화면과 같은 기준: 마크가격 vs 24시간 전 가격(prevDayPx)
+    let last = cache.points.length ? cache.points[cache.points.length - 1][1] : null;
+    // 현재가: 하이퍼리퀴드 마크가격
     const [meta, ctxs] = await post({ type:'metaAndAssetCtxs', dex:'xyz' });
     const i = meta.universe.findIndex(u => u.name === COIN);
-    if (i >= 0) { const px = +ctxs[i].markPx, pv = +ctxs[i].prevDayPx; if (px > 0) last = px; if (pv > 0) base = pv; }
+    if (i >= 0) { const px = +ctxs[i].markPx; if (px > 0) last = px; }
+    // 기준: 가장 최근 한국시간 06:59 1분봉 종가
+    const bt = baseTime();
+    if (baseCache.t !== bt) {
+      const kb = await post({ type:'candleSnapshot', req:{ coin: COIN, interval:'1m', startTime: bt * 1000, endTime: (bt + 60) * 1000 } });
+      const c = kb.find(x => x.t / 1000 === bt) || kb[0];
+      if (c) baseCache = { t: bt, v: +c.c };
+    }
+    const base = baseCache.t === bt ? baseCache.v : null;
     const pts = cache.points.map(p => [p[0], p[1]]);
     if (w.live && last != null && pts.length) pts.push([Math.min(Date.now() / 1000, w.end), last]);
     const st = { start: w.start, end: w.end, points: pts, base, last, live: w.live };
