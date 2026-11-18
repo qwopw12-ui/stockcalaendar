@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>K-ANT 증시노트</title>
-<meta name="description" content="국내·해외 증시 주요일정, 보호예수 해제, 공모주 청약, 머니 플로우, ADR을 한눈에">
+<meta name="description" content="국내·해외 증시 주요일정, 보호예수 해제, 공모주 청약, 증시 자금추이, ADR을 한눈에">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="K-ANT 증시노트">
 <meta property="og:title" content="K-ANT 증시노트">
-<meta property="og:description" content="국내·해외 증시 주요일정, 보호예수 해제, 공모주 청약, 머니 플로우, ADR을 한눈에">
+<meta property="og:description" content="국내·해외 증시 주요일정, 보호예수 해제, 공모주 청약, 증시 자금추이, ADR을 한눈에">
 <meta property="og:url" content="https://stockcalendarkant.netlify.app/">
 <meta property="og:image" content="https://stockcalendarkant.netlify.app/og-kant-v2.png">
 <meta property="og:image:width" content="1200">
@@ -711,7 +711,7 @@ html.dark .tsw{outline-color:#86efac;animation-name:tswGlowD}
 <body>
 <header>
   <div>
-    <div class="thw"><div class="vtabs"><h1 class="vt on" data-v="main">증시 주요일정</h1><h1 class="vt" data-v="live">야간선물/반도체</h1><h1 class="vt" data-v="flow">머니 플로우</h1><h1 class="vt" data-v="adr">공포·탐욕 지수 / ADR</h1><h1 class="vt" data-v="lock">보호예수 해제</h1><h1 class="vt" data-v="subs">공모주 청약일정</h1></div><button class="tsw" id="tsw" type="button" aria-label="다크모드 전환"><span class="tl l">LIGHT<br>MODE</span><span class="tl d">DARK<br>MODE</span><span class="kn"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="#8a919c" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="#5d6470" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 14.6A8 8 0 1 1 9.4 4.5a6.4 6.4 0 0 0 10.1 10.1z"/><path d="M17 3.5v2.4M15.8 4.7h2.4M20.6 8.2v1.6M19.8 9h1.6"/></svg></span></button></div>
+    <div class="thw"><div class="vtabs"><h1 class="vt on" data-v="main">증시 주요일정</h1><h1 class="vt" data-v="live">야간선물/반도체</h1><h1 class="vt" data-v="flow">증시 자금추이</h1><h1 class="vt" data-v="adr">공포·탐욕 지수 / ADR</h1><h1 class="vt" data-v="lock">보호예수 해제</h1><h1 class="vt" data-v="subs">공모주 청약일정</h1></div><button class="tsw" id="tsw" type="button" aria-label="다크모드 전환"><span class="tl l">LIGHT<br>MODE</span><span class="tl d">DARK<br>MODE</span><span class="kn"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="#8a919c" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="#5d6470" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 14.6A8 8 0 1 1 9.4 4.5a6.4 6.4 0 0 0 10.1 10.1z"/><path d="M17 3.5v2.4M15.8 4.7h2.4M20.6 8.2v1.6M19.8 9h1.6"/></svg></span></button></div>
   </div>
   <div class="tools">
     <input id="q" placeholder="종목·키워드 검색 (예: 실적, CPI, 엔비디아)">
@@ -1086,7 +1086,7 @@ document.querySelectorAll('.adrv [data-r]').forEach(box=>{const rk=box.dataset.r
 
 let adrInit=false;
 window.addEventListener('resize',()=>{if(VIEW==='adr')renderAdr()});
-function setView(v){VIEW=v;document.body.classList.toggle('vadr',v==='adr');if(v==='adr'){requestAnimationFrame(()=>{if(!adrInit){adCards();adrInit=true}renderAdr();renderFG()})}document.body.classList.toggle('vsubs',v==='subs');if(v==='subs')renderSubs();document.body.classList.toggle('vflow',v==='flow');if(v==='flow'){requestAnimationFrame(renderFlow)}document.querySelectorAll('.vt').forEach(b=>b.classList.toggle('on',b.dataset.v===v));document.body.classList.toggle('vlock',v==='lock');document.body.classList.toggle('vlive',v==='live');if(v==='live')liveStart();document.body.classList.toggle('vnight',v==='night');if(v==='night')nightStart();document.title=(v==='lock'?'보호예수 해제 일정':v==='flow'?'머니 플로우':v==='subs'?'공모주 청약일정':v==='adr'?'공포·탐욕 지수 / ADR':v==='live'?'야간선물/반도체':v==='night'?'코스피200 야간선물':'증시 주요일정');renderGrid();renderList();try{localStorage.setItem('view',v)}catch(e){}}
+function setView(v){VIEW=v;document.body.classList.toggle('vadr',v==='adr');if(v==='adr'){requestAnimationFrame(()=>{if(!adrInit){adCards();adrInit=true}renderAdr();renderFG()})}document.body.classList.toggle('vsubs',v==='subs');if(v==='subs')renderSubs();document.body.classList.toggle('vflow',v==='flow');if(v==='flow'){requestAnimationFrame(renderFlow)}document.querySelectorAll('.vt').forEach(b=>b.classList.toggle('on',b.dataset.v===v));document.body.classList.toggle('vlock',v==='lock');document.body.classList.toggle('vlive',v==='live');if(v==='live')liveStart();document.body.classList.toggle('vnight',v==='night');if(v==='night')nightStart();document.title=(v==='lock'?'보호예수 해제 일정':v==='flow'?'증시 자금추이':v==='subs'?'공모주 청약일정':v==='adr'?'공포·탐욕 지수 / ADR':v==='live'?'야간선물/반도체':v==='night'?'코스피200 야간선물':'증시 주요일정');renderGrid();renderList();try{localStorage.setItem('view',v)}catch(e){}}
 document.querySelectorAll('.vt').forEach(b=>b.onclick=()=>setView(b.dataset.v));
 const msel=document.getElementById('msel');MKEYS.forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k.replace('-','.');msel.appendChild(o)});msel.onchange=()=>goMonth(msel.value);
 
