@@ -64,12 +64,15 @@
   .sec-h{margin:26px 4px 12px;font-size:17px;font-weight:700;color:var(--ink)}
   .sec-h small{font-size:12px;font-weight:500;color:var(--muted);margin-left:6px}
   .krw{font-size:14px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+  .src{display:none!important}
+  .fxbox{display:inline-flex;align-items:baseline;gap:10px;background:var(--card);border-radius:12px;padding:10px 16px;font-size:15px;font-weight:600;color:var(--sub);box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .fxbox b{font-size:24px;font-weight:800;color:var(--ink);letter-spacing:-.3px;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="topbar">
-    <div>원/달러 <b id="fx">—</b></div>
+    <div class="fxbox">원/달러 환율 <b id="fx">—</b></div>
   </div>
   <div class="sec-h" style="margin-top:0">한국 반도체 <small>KRX 종가 대비 · 원</small></div>
   <div class="grid" id="grid"></div>
