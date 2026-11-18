@@ -700,6 +700,12 @@ html.dark .tsw .tl.l{opacity:0}html.dark .tsw .tl.d{opacity:1}
 html.dark .tsw .kn{left:4px;background:#e4e6ea}
 html.dark .tsw .kn .sun{display:none}html.dark .tsw .kn .moon{display:block}
 @media(max-width:700px){.thw{gap:8px}.tsw{width:66px;height:36px}.tsw .kn{width:30px;height:30px;left:calc(100% - 33px);top:3px}html.dark .tsw .kn{left:3px}.tsw .kn svg{width:16px;height:16px}.tsw .tl{font-size:8px}.tsw .tl.l{left:6px}.tsw .tl.d{right:6px}}
+/* switch neon glow */
+.tsw{outline:2px solid #4ade80;outline-offset:2px;animation:tswGlow 2.4s ease-in-out infinite}
+@keyframes tswGlow{0%,100%{box-shadow:inset 2px 2px 5px rgba(0,0,0,.12),inset -2px -2px 5px rgba(255,255,255,.9),0 0 6px 1px rgba(34,197,94,.55),0 0 16px 3px rgba(34,197,94,.35),0 0 32px 6px rgba(34,197,94,.18)}50%{box-shadow:inset 2px 2px 5px rgba(0,0,0,.12),inset -2px -2px 5px rgba(255,255,255,.9),0 0 10px 2px rgba(34,197,94,.85),0 0 26px 6px rgba(34,197,94,.55),0 0 52px 12px rgba(34,197,94,.3)}}
+html.dark .tsw{outline-color:#86efac;animation-name:tswGlowD}
+@keyframes tswGlowD{0%,100%{box-shadow:inset 2px 2px 6px rgba(0,0,0,.55),0 0 6px 1px rgba(74,222,128,.6),0 0 18px 4px rgba(74,222,128,.4),0 0 36px 8px rgba(74,222,128,.2)}50%{box-shadow:inset 2px 2px 6px rgba(0,0,0,.55),0 0 12px 3px rgba(74,222,128,.95),0 0 30px 8px rgba(74,222,128,.6),0 0 60px 16px rgba(74,222,128,.35)}}
+@media (prefers-reduced-motion:reduce){.tsw{animation:none}}
 </style>
 </head>
 <body>
