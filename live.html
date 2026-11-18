@@ -71,6 +71,7 @@
   <div class="topbar">
     <div>원/달러 <b id="fx">—</b></div>
   </div>
+  <div class="sec-h" style="margin-top:0">한국 반도체 <small>KRX 종가 대비 · 원</small></div>
   <div class="grid" id="grid"></div>
   <div class="sec-h">미국 반도체 <small>정규장 종가 대비 · 달러</small></div>
   <div class="grid" id="usgrid"></div>
@@ -311,7 +312,7 @@ function buildUs(){
   document.getElementById('usgrid').innerHTML = US.map(s => `
     <div class="card" id="c-${s.id}">
       <div class="head">
-        <div class="logo fb" style="--c:${s.color}"><span>${s.logo}</span></div>
+        <div class="logo" style="--c:${s.color}"><img src="https://ssl.pstatic.net/imgstock/fn/real/logo/stock/Stock${s.tk}.O.svg" alt="${s.name} 로고" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('fb');this.remove()"><span>${s.logo}</span></div>
         <div class="name">${s.name} <span style="font-size:15px;color:var(--muted);font-weight:600">${s.tk}</span></div>
       </div>
       <div class="src"><span class="dot stale"></span><span class="srcname">Hyperliquid</span>해외 실시간 추정가</div>
