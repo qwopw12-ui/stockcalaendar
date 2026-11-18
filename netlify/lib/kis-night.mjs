@@ -178,7 +178,8 @@ async function save(s, key, st) {
   await s.setJSON(key, st);
 }
 
-/** 수집기(1분마다): 웹소켓으로 ~22초 동안 실제 체결을 받아 쌓는다. */
+/** 수집기(1분마다): REST 현재가를 5초 간격으로 ~24초 동안 받아 쌓는다(보는 사람이 없어도 차트가 이어지게).
+ *  REST가 야간 값을 못 주면 그때만 웹소켓으로 ~22초 받기. */
 export async function collect() {
   const s = store(), ses = session(), key = `session-${ses.id}`;
   if (!ses.live) return;
@@ -186,6 +187,17 @@ export async function collect() {
   const st = (await s.get(key, { type: "json" })) ?? blank(ses);
   try {
     st.code = await frontMonthCode(s);
+    if (st.rest_ok !== false) {
+      let ok = 0;
+      for (let i = 0; i < 5; i++) {
+        const t0 = Date.now();
+        const q = await restQuote(s, st.code).catch(() => null);
+        if (q && (st.open == null || Math.abs((q.o ?? 0) - st.open) < 0.01)) { apply(st, q, Date.now() / 1000); st.rest_ok = true; ok++; }
+        else if (q) { st.rest_ok = false; break; }
+        if (i < 4) await new Promise((r) => setTimeout(r, Math.max(0, 5000 - (Date.now() - t0))));
+      }
+      if (ok) { st.error = null; await save(s, key, st); return; }
+    }
     const onTick = (t) => apply(st, t, Date.now() / 1000);
     let res = await streamTicks(st.code, await approvalKey(s), 22000, onTick);
     if (res.authFail) res = await streamTicks(st.code, await approvalKey(s, true), 3000, onTick);
@@ -203,7 +215,7 @@ export async function refresh() {
   st.fetched_at = now;
   const q = await restQuote(s, st.code).catch(() => null);
   // 야간 값인지 확인: 웹소켓으로 받은 야간 시가와 같아야 채택 (다르면 주간 값이라 버림)
-  if (q && (st.open == null || Math.abs((q.o ?? 0) - st.open) < 0.01)) { apply(st, q, now); st.rest_ok = true; }
+  if (q && (st.open == null || Math.abs((q.o ?? 0) - st.open) < 0.01)) { apply(st, q, now); st.rest_ok = true; st.error = null; }
   else if (q) st.rest_ok = false;
   await save(s, key, st);
   return st;
