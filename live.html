@@ -84,6 +84,7 @@
   .row{font-size:13px}
   .grid{gap:14px}
   .sec-h{margin:20px 4px 10px}
+  .spark{display:block;width:100%;height:46px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -187,6 +188,7 @@ function buildCards(){
       <div class="src"><span class="dot stale"></span><span class="srcname">${s.src === 'bybit' ? 'Bybit' : 'Hyperliquid'}</span>해외 실시간 추정가</div>
       <div class="price"><span class="v">—</span><span class="u">원</span></div>
       <div class="chg"><span class="lbl"></span><span class="amt"></span><span class="sep">|</span><span class="pct"></span></div>
+      <canvas class="spark" data-coin="${s.coin||''}"></canvas>
       <div class="rows">
         <div class="row"><span>시가총액</span><span class="cap"></span></div>
       </div>
@@ -358,6 +360,7 @@ function buildUs(){
       <div class="src"><span class="dot stale"></span><span class="srcname">Hyperliquid</span>해외 실시간 추정가</div>
       <div class="price"><span class="v">—</span></div>
       <div class="chg"><span class="lbl"></span><span class="amt"></span><span class="sep">|</span><span class="pct"></span></div>
+      ${s.api ? '' : `<canvas class="spark" data-coin="${s.coin}"></canvas>`}
     </div>`;
   ['usgrid','biggrid'].forEach(g => { const el = document.getElementById(g); if (el) el.innerHTML = US.filter(s => (s.grid || 'usgrid') === g).map(card).join(''); });
 }
@@ -453,6 +456,63 @@ refreshSox(); setInterval(refreshSox, 30000);
     sync(); fit(); setTimeout(()=>{sync();fit();},1500);
   });
 })();
+// ===== 카드 미니 차트 (Hyperliquid 5분봉, 한국시간 18:00~06:00) =====
+const SPK = {};
+function sparkWindow(){
+  const KSTs = 9*3600, now = Date.now()/1000, k = new Date((now+KSTs)*1000);
+  let d = Date.UTC(k.getUTCFullYear(),k.getUTCMonth(),k.getUTCDate())/1000 - KSTs;
+  if (k.getUTCHours() < 18) d -= 86400;
+  const start = d + 18*3600; return { start, end: start + 12*3600 };
+}
+function sparkBase(coin){
+  const s = STOCKS.find(x => x.coin === coin);
+  if (s){ const cfg = cfgOf(s); return (cfg.close && fx) ? cfg.close / fx : null; }   // 한국: KRX 종가(원) ÷ 환율
+  const u = US.find(x => x.coin === coin); return u ? u.close || null : null;          // 미국: 정규장 종가
+}
+function sparkLast(coin){
+  const s = STOCKS.find(x => x.coin === coin) || US.find(x => x.coin === coin); return s ? s.usd : null;
+}
+function drawSpark(cv){
+  const coin = cv.dataset.coin, d = SPK[coin]; if (!d || !d.pts.length) return;
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight; if (!W || !H) return;
+  cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
+  const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H);
+  const pts = d.pts.slice(); const lp = sparkLast(coin); if (lp) pts.push([Math.min(Date.now()/1000, d.end), lp]);
+  const base = sparkBase(coin);
+  let lo = Math.min(...pts.map(p=>p[1])), hi = Math.max(...pts.map(p=>p[1]));
+  if (base){ lo = Math.min(lo, base); hi = Math.max(hi, base); }
+  if (hi - lo < hi*0.0005){ const m=(hi+lo)/2; lo = m - hi*0.00025; hi = m + hi*0.00025; }
+  const pad = 4, X = t => (t - d.start)/(d.end - d.start)*(W-6) + 1, Y = v => pad + (hi - v)/(hi - lo)*(H - pad*2);
+  const st = getComputedStyle(document.documentElement);
+  const up = st.getPropertyValue('--up').trim() || '#e5323b', dn = st.getPropertyValue('--down').trim() || '#2f6fe4';
+  const yb = base ? Y(base) : H;
+  if (base){ c.setLineDash([3,3]); c.strokeStyle = 'rgba(140,150,160,.55)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, Math.round(yb)+.5); c.lineTo(W, Math.round(yb)+.5); c.stroke(); c.setLineDash([]); }
+  const path = () => { c.beginPath(); pts.forEach((p,i) => i ? c.lineTo(X(p[0]), Y(p[1])) : c.moveTo(X(p[0]), Y(p[1]))); };
+  for (const [col, top, bot] of [[up, 0, yb], [dn, yb, H]]) {
+    c.save(); c.beginPath(); c.rect(0, top, W, bot-top); c.clip();
+    path(); c.lineTo(X(pts[pts.length-1][0]), yb); c.lineTo(X(pts[0][0]), yb); c.closePath();
+    c.fillStyle = col + '1f'; c.fill();
+    path(); c.strokeStyle = col; c.lineWidth = 1.6; c.lineJoin = 'round'; c.stroke(); c.restore();
+  }
+  const lx = X(pts[pts.length-1][0]), ly = Y(pts[pts.length-1][1]);
+  c.fillStyle = (!base || pts[pts.length-1][1] >= base) ? up : dn; c.beginPath(); c.arc(lx, ly, 2.8, 0, 7); c.fill();
+}
+const drawSparks = () => document.querySelectorAll('canvas.spark').forEach(drawSpark);
+async function loadSparks(){
+  const w = sparkWindow();
+  const coins = [...new Set([...document.querySelectorAll('canvas.spark')].map(c => c.dataset.coin).filter(Boolean))];
+  for (const coin of coins) {
+    try{
+      const k = await (await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ type:'candleSnapshot', req:{ coin, interval:'5m', startTime: w.start*1000, endTime: Math.min(Date.now(), w.end*1000) } }) })).json();
+      SPK[coin] = { start: w.start, end: w.end, pts: k.filter(x => x.t/1000 >= w.start && x.t/1000 < w.end).map(x => [x.t/1000 + 300, +x.c]) };
+    }catch(e){}
+  }
+  drawSparks();
+}
+loadSparks(); setInterval(loadSparks, 60000); setInterval(drawSparks, 10000);
+window.addEventListener('resize', drawSparks);
+try{ new MutationObserver(drawSparks).observe(document.documentElement, {attributes:true, attributeFilter:['class']}); }catch(e){}
 </script>
 </body>
 </html>
