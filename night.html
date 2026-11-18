@@ -15,7 +15,7 @@
   #chart { position:absolute; inset:0; }
   .title { position:absolute; top:9px; right:14px; z-index:3; color:#fff; font-weight:700; font-size:15px;
            pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,.6); }
-  .badge { position:absolute; top:10px; left:66px; z-index:3; font-size:11px; padding:2px 8px; border-radius:10px;
+  .badge { position:absolute; top:10px; left:64px; z-index:3; font-size:11px; padding:2px 8px; border-radius:10px;
            background:rgba(0,0,0,.45); color:#ddd; pointer-events:none; max-width:70%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .badge.live { color:#7dff5c; } .badge.error { color:#ff8a80; }
   .overlay { position:absolute; inset:0; z-index:2; display:none; align-items:center; justify-content:center;
@@ -38,68 +38,177 @@
   <div class="price flat" id="price">--</div>
 </div>
 
-<script src="https://unpkg.com/lightweight-charts@5.3.0/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 // 데이터: 한국투자증권 KIS Open API — KRX 야간선물 실시간 체결(H0MFCNT0), 10초마다 갱신
 // 등락: 전일(주간장) 종가 대비 — KIS가 주는 '전일 대비' 그대로
-// 흰 선: 18:00 야간 시가
+// 흰 선: 18:00 야간 시가 / 차트는 외부 라이브러리 없이 캔버스로 직접 그림
 const POLL_MS = 10000;
-const LC = LightweightCharts;
 const KST = 9 * 3600;
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, '0');
 const f2 = v => (v == null || isNaN(v)) ? '--' : Number(v).toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const FONT = '"Pretendard","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
 
-const chart = LC.createChart($('chart'), {
-  autoSize: true,
-  layout: {
-    background: { type: LC.ColorType.VerticalGradient, topColor: 'rgb(92,89,79)', bottomColor: 'rgb(26,24,19)' },
-    textColor: '#c8c4b8', fontSize: 11, attributionLogo: true,
-    fontFamily: '"Pretendard","Malgun Gothic","Apple SD Gothic Neo",sans-serif',
-  },
-  grid: { vertLines: { color: 'rgba(160,160,160,.35)' }, horzLines: { color: 'rgba(160,160,160,.35)', style: LC.LineStyle.Dotted } },
-  leftPriceScale: { visible: true, borderColor: '#8a877d', scaleMargins: { top: 0.08, bottom: 0.06 } },
-  rightPriceScale: { visible: false },
-  timeScale: {
-    borderColor: '#8a877d', timeVisible: true, secondsVisible: false,
-    shiftVisibleRangeOnNewBar: false, rightOffset: 0, minBarSpacing: 0.005,
-    tickMarkFormatter: (t, type) => {
-      const d = new Date(t * 1000);
-      return type <= LC.TickMarkType.DayOfMonth ? `${pad(d.getUTCMonth() + 1)}/${pad(d.getUTCDate())}` : `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
-    },
-  },
-  localization: {
-    priceFormatter: p => p.toFixed(2),
-    timeFormatter: t => { const d = new Date(t * 1000); return `${pad(d.getUTCMonth() + 1)}/${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`; },
-  },
-  crosshair: { mode: LC.CrosshairMode.Normal },
-  handleScroll: false, handleScale: false,
-});
-let openPx = null;
-const frame = chart.addSeries(LC.LineSeries, { priceScaleId: 'left', lineVisible: false, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false });
-const main = chart.addSeries(LC.LineSeries, {
-  priceScaleId: 'left', color: '#DDDF0D', lineWidth: 2,
-  lastValueVisible: true, priceLineVisible: true,
-  priceLineColor: '#2de80c', priceLineStyle: LC.LineStyle.Dotted, priceLineWidth: 1, crosshairMarkerRadius: 3,
-  autoscaleInfoProvider: original => {
-    const r = original(); if (!r) return null;
-    let lo = r.priceRange.minValue, hi = r.priceRange.maxValue;
-    if (openPx != null) { lo = Math.min(lo, openPx); hi = Math.max(hi, openPx); }
-    if (hi - lo < 4) { const m = (hi + lo) / 2; lo = m - 2; hi = m + 2; }
-    return { priceRange: { minValue: lo, maxValue: hi } };
-  },
-});
-let openLine = null, slots = 0, frameStart = null;
-function fitSession() { if (slots) chart.timeScale().setVisibleLogicalRange({ from: 0, to: slots - 1 }); }
-new ResizeObserver(() => requestAnimationFrame(fitSession)).observe($('chart'));
+const box = $('chart');
+const cv = document.createElement('canvas');
+cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block';
+box.appendChild(cv);
+const ctx = cv.getContext('2d');
+let S = null;          // 최근 API 응답
+let hoverX = null;     // 마우스 위치(px)
+const M = { l: 56, r: 12, t: 30, b: 28 };
 
-function setFrame(start, end, bucket) {
-  if (frameStart === start) return;
-  frameStart = start;
-  const fd = [];
-  for (let t = start; t <= end; t += bucket) fd.push({ time: t + KST });
-  frame.setData(fd); slots = fd.length;
+function niceStep(range, target) {
+  const raw = range / target, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / mag;
+  return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
 }
+
+// 단조 3차 보간(Fritsch–Carlson): 점은 그대로 지나가되 꺾임 없이 부드럽게, 위아래로 튀지 않음
+function smoothPath(xs, ys) {
+  const n = xs.length;
+  ctx.moveTo(xs[0], ys[0]);
+  if (n < 3) { for (let i = 1; i < n; i++) ctx.lineTo(xs[i], ys[i]); return; }
+  const d = [], m = new Array(n);
+  for (let i = 0; i < n - 1; i++) d.push((ys[i + 1] - ys[i]) / ((xs[i + 1] - xs[i]) || 1e-6));
+  m[0] = d[0]; m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / d[i], b = m[i + 1] / d[i], h = a * a + b * b;
+    if (h > 9) { const t = 3 / Math.sqrt(h); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; }
+  }
+  for (let i = 0; i < n - 1; i++) {
+    const dx = (xs[i + 1] - xs[i]) / 3;
+    ctx.bezierCurveTo(xs[i] + dx, ys[i] + m[i] * dx, xs[i + 1] - dx, ys[i + 1] - m[i + 1] * dx, xs[i + 1], ys[i + 1]);
+  }
+}
+
+function draw() {
+  const dpr = window.devicePixelRatio || 1;
+  const W = box.clientWidth, H = box.clientHeight;
+  if (!W || !H) return;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, 'rgb(92,89,79)'); g.addColorStop(1, 'rgb(26,24,19)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  if (!S || S.start == null) return;
+
+  const x0 = M.l, x1 = W - M.r, y0 = M.t, y1 = H - M.b;
+  const span = S.end - S.start;
+  const X = t => x0 + (t - S.start) / span * (x1 - x0);
+  // 화면에 그릴 점: 같은 픽셀(0.5px)에 몰린 점은 마지막 값만 → 부드럽고 가볍게
+  const pts = [];
+  for (const [t, p] of S.points) {
+    const x = X(t);
+    const cell = Math.floor(x * 2);  // 0.5px 칸 단위로 묶기
+    if (pts.length && pts[pts.length - 1][2] === cell) pts[pts.length - 1] = [x, p, cell]; else pts.push([x, p, cell]);
+  }
+  let lo = Infinity, hi = -Infinity;
+  for (const [, p] of pts) { if (p < lo) lo = p; if (p > hi) hi = p; }
+  if (S.open != null) { lo = Math.min(lo, S.open); hi = Math.max(hi, S.open); }
+  if (!isFinite(lo)) { lo = (S.base || 0) - 2; hi = (S.base || 0) + 2; }
+  if (hi - lo < 4) { const c = (hi + lo) / 2; lo = c - 2; hi = c + 2; }
+  const padv = (hi - lo) * 0.07; lo -= padv; hi += padv;
+  const Y = p => y1 - (p - lo) / (hi - lo) * (y1 - y0);
+
+  // 격자 + 가격축
+  ctx.font = `11px ${FONT}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
+  const step = niceStep(hi - lo, 8);
+  ctx.strokeStyle = 'rgba(160,160,160,.35)'; ctx.lineWidth = 1; ctx.setLineDash([1, 3]);
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+    const y = Math.round(Y(v)) + .5;
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+    ctx.fillStyle = '#c8c4b8'; ctx.fillText(v.toFixed(2), x0 - 6, y);
+  }
+  ctx.setLineDash([]);
+  // 시간축 (1시간 간격)
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  const hourGap = (x1 - x0) / (span / 3600) < 34 ? 2 : 1;
+  for (let t = S.start, i = 0; t <= S.end; t += 3600, i++) {
+    const x = Math.round(X(t)) + .5;
+    ctx.strokeStyle = 'rgba(160,160,160,.35)';
+    ctx.beginPath(); ctx.moveTo(x, y0 - M.t + 4); ctx.lineTo(x, y1); ctx.stroke();
+    if (i % hourGap) continue;
+    const d = new Date((t + KST) * 1000), h = d.getUTCHours();
+    const mid = h === 0;
+    ctx.font = `${mid ? 'bold ' : ''}11px ${FONT}`;
+    ctx.fillStyle = '#c8c4b8';
+    ctx.fillText(mid ? `${d.getUTCMonth() + 1}/${d.getUTCDate()}` : `${pad(h)}:00`, Math.min(Math.max(x, x0 + 14), x1 - 14), y1 + 8);
+  }
+  ctx.font = `11px ${FONT}`;
+  ctx.strokeStyle = '#8a877d';
+  ctx.beginPath(); ctx.moveTo(x0 + .5, 0); ctx.lineTo(x0 + .5, y1 + .5); ctx.lineTo(x1, y1 + .5); ctx.stroke();
+
+  // 시가(흰 선)
+  if (S.open != null) {
+    const y = Math.round(Y(S.open)) + .5;
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+    ctx.fillText('시가', x1 - 4, y - 2);
+  }
+  if (!pts.length) return;
+
+  // 가격선 — 은은한 광택 + 부드러운 곡선
+  // 화면용 가벼운 다듬기(약 ±2px 가우시안) — 계단처럼 각진 모양만 누그러뜨리고, 마지막 현재가는 정확히 그대로
+  const xs = pts.map(p => p[0]), raw = pts.map(p => Y(p[1]));
+  const ys = raw.map((_, i) => {
+    if (i === raw.length - 1) return raw[i];
+    let sw = 0, sv = 0;
+    for (let j = Math.max(0, i - 4); j <= Math.min(raw.length - 1, i + 4); j++) {
+      const dx = xs[j] - xs[i], w = Math.exp(-dx * dx / (2 * 2.2 * 2.2));
+      sw += w; sv += w * raw[j];
+    }
+    return sv / sw;
+  });
+  ctx.save();
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath(); smoothPath(xs, ys);
+  ctx.strokeStyle = 'rgba(221,223,13,.22)'; ctx.lineWidth = 5; ctx.stroke();
+  ctx.beginPath(); smoothPath(xs, ys);
+  ctx.strokeStyle = '#DDDF0D'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.restore();
+
+  // 현재가 점선 + 라벨
+  const lx = xs[xs.length - 1], ly = raw[raw.length - 1], lp = pts[pts.length - 1][1];
+  ctx.strokeStyle = '#2de80c'; ctx.setLineDash([2, 3]); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x0, Math.round(ly) + .5); ctx.lineTo(x1, Math.round(ly) + .5); ctx.stroke();
+  ctx.setLineDash([]);
+  if (S.live) { ctx.fillStyle = '#DDDF0D'; ctx.beginPath(); ctx.arc(lx, ly, 3.5, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = '#2de80c'; ctx.fillRect(0, ly - 9, x0, 18);
+  ctx.fillStyle = '#111'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `bold 11px ${FONT}`;
+  ctx.fillText(lp.toFixed(2), x0 / 2, ly);
+
+  // 마우스 올리면 시각·가격 표시
+  if (hoverX != null && hoverX >= x0 && hoverX <= x1) {
+    let k = 0; for (let i = 0; i < xs.length; i++) { if (xs[i] <= hoverX) k = i; else break; }
+    if (hoverX >= xs[0]) {
+      const hx = xs[k], hy = ys[k];
+      ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(Math.round(hx) + .5, y0 - 20); ctx.lineTo(Math.round(hx) + .5, y1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x0, Math.round(hy) + .5); ctx.lineTo(x1, Math.round(hy) + .5); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#DDDF0D'; ctx.beginPath(); ctx.arc(hx, hy, 4, 0, Math.PI * 2); ctx.fill();
+      const t = S.start + (hx - x0) / (x1 - x0) * span, d = new Date((t + KST) * 1000);
+      const tip = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}  ${pts[k][1].toFixed(2)}`;
+      ctx.font = `bold 12px ${FONT}`;
+      const tw = ctx.measureText(tip).width + 14;
+      const tx = Math.min(Math.max(hx - tw / 2, x0), x1 - tw);
+      ctx.fillStyle = 'rgba(0,0,0,.75)'; ctx.fillRect(tx, y1 + 3, tw, 20);
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(tip, tx + 7, y1 + 13);
+    }
+  }
+}
+let raf = 0; const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); };
+new ResizeObserver(redraw).observe(box);
+box.addEventListener('mousemove', e => { hoverX = e.clientX - box.getBoundingClientRect().left; redraw(); });
+box.addEventListener('mouseleave', () => { hoverX = null; redraw(); });
+box.addEventListener('touchmove', e => { hoverX = e.touches[0].clientX - box.getBoundingClientRect().left; redraw(); }, { passive: true });
+box.addEventListener('touchend', () => { hoverX = null; redraw(); });
+
 function setBadge(text, cls = '') { $('badge').textContent = text; $('badge').className = 'badge ' + cls; }
 function overlay(show, head = '', msg = '') {
   $('overlay').style.display = show ? 'flex' : 'none'; $('ovHead').textContent = head; $('ovMsg').textContent = msg;
@@ -112,16 +221,8 @@ async function poll() {
   catch (e) { setBadge('⚠ 서버 응답 없음', 'error'); return; }
   if (st.start == null) { setBadge('⚠ ' + (st.error || '오류'), 'error'); overlay(true, '⚠ 데이터 오류', st.error || ''); return; }
 
-  setFrame(st.start, st.end, st.bucket);
-  const key = JSON.stringify([st.start, st.points.length, st.last, st.base, st.open]);
-  if (key !== lastJson) {
-    lastJson = key;
-    main.setData(st.points.map(([t, p]) => ({ time: t + KST, value: p })));
-    openPx = st.open ?? null;
-    if (openLine) main.removePriceLine(openLine);
-    openLine = openPx ? main.createPriceLine({ price: openPx, color: '#ffffff', lineWidth: 1, lineStyle: LC.LineStyle.Solid, axisLabelVisible: false, title: '시가' }) : null;
-    fitSession();
-  }
+  const key = JSON.stringify([st.start, st.points.length, st.last, st.base, st.open, st.live]);
+  if (key !== lastJson) { lastJson = key; S = st; redraw(); }
 
   // 현재가 (전일 대비)
   if (st.last != null) {
