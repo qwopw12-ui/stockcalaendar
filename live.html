@@ -317,7 +317,6 @@ function buildUs(){
       </div>
       <div class="src"><span class="dot stale"></span><span class="srcname">Hyperliquid</span>해외 실시간 추정가</div>
       <div class="price"><span class="v">—</span></div>
-      <div class="krw"></div>
       <div class="chg"><span class="lbl"></span><span class="amt"></span><span class="sep">|</span><span class="pct"></span></div>
     </div>`).join('');
 }
@@ -333,7 +332,6 @@ function renderUs(s){
   }
   v.textContent = '$' + s.usd.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   s.last = s.usd;
-  card.querySelector('.krw').textContent = fx ? `≈ ₩${won(s.usd * fx)}` : '';
   if (s.close){
     const diff = s.usd - s.close, pct = diff / s.close * 100;
     const cls = Math.abs(diff) < 0.005 ? 'flat' : diff > 0 ? 'up' : 'down';
