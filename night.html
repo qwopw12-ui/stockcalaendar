@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>코스피200 야간선물</title>
+<style>
+  :root { --ink:#222; --up:#e0302a; --down:#1f5bd8; --flat:#222; --sub:#8a919c; }
+  html.kdark { --ink:#e6e8ec; --up:#f0565e; --down:#5b8ff0; --flat:#e6e8ec; --sub:#7d8591; color-scheme:dark; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:transparent; color:var(--ink);
+    font-family:"Pretendard","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+  .wrap { max-width:1000px; margin:0 auto; padding:4px 0 12px; }
+  .chart-box { position:relative; height:420px; border-radius:10px; overflow:hidden; background:rgb(26,24,19); }
+  #chart { position:absolute; inset:0; }
+  .title { position:absolute; top:9px; right:14px; z-index:3; color:#fff; font-weight:700; font-size:15px;
+           pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,.6); }
+  .badge { position:absolute; top:10px; left:66px; z-index:3; font-size:11px; padding:2px 8px; border-radius:10px;
+           background:rgba(0,0,0,.45); color:#ddd; pointer-events:none; max-width:70%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .badge.live { color:#7dff5c; } .badge.error { color:#ff8a80; }
+  .overlay { position:absolute; inset:0; z-index:2; display:none; align-items:center; justify-content:center;
+             color:#eee; text-align:center; font-size:14px; padding:0 20px; }
+  .overlay b { display:block; font-size:16px; margin-bottom:6px; }
+  .price { margin:14px 4px 0; font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .price i { font-style:italic; }
+  .up { color:var(--up); } .down { color:var(--down); } .flat { color:var(--flat); }
+  @media (max-width:600px) { .chart-box { height:320px; border-radius:0; } .price { margin-left:10px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="chart-box">
+    <div id="chart"></div>
+    <div class="title">KOSPI200 야간선물</div>
+    <div class="badge" id="badge">연결 중…</div>
+    <div class="overlay" id="overlay"><div><b id="ovHead">⏳ 불러오는 중</b><span id="ovMsg"></span></div></div>
+  </div>
+  <div class="price flat" id="price">--</div>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts@5.3.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+// 데이터: 한국투자증권 KIS Open API — KRX 야간선물 실시간 체결(H0MFCNT0), 10초마다 갱신
+// 등락: 전일(주간장) 종가 대비 — KIS가 주는 '전일 대비' 그대로
+// 흰 선: 18:00 야간 시가
+const POLL_MS = 10000;
+const LC = LightweightCharts;
+const KST = 9 * 3600;
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, '0');
+const f2 = v => (v == null || isNaN(v)) ? '--' : Number(v).toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const chart = LC.createChart($('chart'), {
+  autoSize: true,
+  layout: {
+    background: { type: LC.ColorType.VerticalGradient, topColor: 'rgb(92,89,79)', bottomColor: 'rgb(26,24,19)' },
+    textColor: '#c8c4b8', fontSize: 11, attributionLogo: true,
+    fontFamily: '"Pretendard","Malgun Gothic","Apple SD Gothic Neo",sans-serif',
+  },
+  grid: { vertLines: { color: 'rgba(160,160,160,.35)' }, horzLines: { color: 'rgba(160,160,160,.35)', style: LC.LineStyle.Dotted } },
+  leftPriceScale: { visible: true, borderColor: '#8a877d', scaleMargins: { top: 0.08, bottom: 0.06 } },
+  rightPriceScale: { visible: false },
+  timeScale: {
+    borderColor: '#8a877d', timeVisible: true, secondsVisible: false,
+    shiftVisibleRangeOnNewBar: false, rightOffset: 0, minBarSpacing: 0.005,
+    tickMarkFormatter: (t, type) => {
+      const d = new Date(t * 1000);
+      return type <= LC.TickMarkType.DayOfMonth ? `${pad(d.getUTCMonth() + 1)}/${pad(d.getUTCDate())}` : `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+    },
+  },
+  localization: {
+    priceFormatter: p => p.toFixed(2),
+    timeFormatter: t => { const d = new Date(t * 1000); return `${pad(d.getUTCMonth() + 1)}/${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`; },
+  },
+  crosshair: { mode: LC.CrosshairMode.Normal },
+  handleScroll: false, handleScale: false,
+});
+let openPx = null;
+const frame = chart.addSeries(LC.LineSeries, { priceScaleId: 'left', lineVisible: false, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false });
+const main = chart.addSeries(LC.LineSeries, {
+  priceScaleId: 'left', color: '#DDDF0D', lineWidth: 2,
+  lastValueVisible: true, priceLineVisible: true,
+  priceLineColor: '#2de80c', priceLineStyle: LC.LineStyle.Dotted, priceLineWidth: 1, crosshairMarkerRadius: 3,
+  autoscaleInfoProvider: original => {
+    const r = original(); if (!r) return null;
+    let lo = r.priceRange.minValue, hi = r.priceRange.maxValue;
+    if (openPx != null) { lo = Math.min(lo, openPx); hi = Math.max(hi, openPx); }
+    if (hi - lo < 4) { const m = (hi + lo) / 2; lo = m - 2; hi = m + 2; }
+    return { priceRange: { minValue: lo, maxValue: hi } };
+  },
+});
+let openLine = null, slots = 0, frameStart = null;
+function fitSession() { if (slots) chart.timeScale().setVisibleLogicalRange({ from: 0, to: slots - 1 }); }
+new ResizeObserver(() => requestAnimationFrame(fitSession)).observe($('chart'));
+
+function setFrame(start, end, bucket) {
+  if (frameStart === start) return;
+  frameStart = start;
+  const fd = [];
+  for (let t = start; t <= end; t += bucket) fd.push({ time: t + KST });
+  frame.setData(fd); slots = fd.length;
+}
+function setBadge(text, cls = '') { $('badge').textContent = text; $('badge').className = 'badge ' + cls; }
+function overlay(show, head = '', msg = '') {
+  $('overlay').style.display = show ? 'flex' : 'none'; $('ovHead').textContent = head; $('ovMsg').textContent = msg;
+}
+
+let lastJson = '';
+async function poll() {
+  let st;
+  try { st = await (await fetch('/api/kis-night', { cache: 'no-store' })).json(); }
+  catch (e) { setBadge('⚠ 서버 응답 없음', 'error'); return; }
+  if (st.start == null) { setBadge('⚠ ' + (st.error || '오류'), 'error'); overlay(true, '⚠ 데이터 오류', st.error || ''); return; }
+
+  setFrame(st.start, st.end, st.bucket);
+  const key = JSON.stringify([st.start, st.points.length, st.last, st.base, st.open]);
+  if (key !== lastJson) {
+    lastJson = key;
+    main.setData(st.points.map(([t, p]) => ({ time: t + KST, value: p })));
+    openPx = st.open ?? null;
+    if (openLine) main.removePriceLine(openLine);
+    openLine = openPx ? main.createPriceLine({ price: openPx, color: '#ffffff', lineWidth: 1, lineStyle: LC.LineStyle.Solid, axisLabelVisible: false, title: '시가' }) : null;
+    fitSession();
+  }
+
+  // 현재가 (전일 대비)
+  if (st.last != null) {
+    const c = st.chg ?? (st.base ? st.last - st.base : 0);
+    const r = st.rate ?? (st.base ? c / st.base * 100 : 0);
+    const cls = c > 0 ? 'up' : c < 0 ? 'down' : 'flat', sg = c > 0 ? '+' : '';
+    $('price').className = 'price ' + cls;
+    $('price').innerHTML = `${f2(st.last)} (${sg}${f2(c)}, <i>${sg}${Number(r).toFixed(2)}%</i>)`;
+  }
+
+  if (st.points.length) overlay(false);
+  else if (st.error) overlay(true, '⚠ 연결 문제', st.error);
+  else if (st.live) overlay(true, '⏳ 체결 대기 중', '18:00 개장 후 첫 체결이 들어오면 차트가 그려집니다');
+  else overlay(true, '장 종료', '평일 18:00에 새 차트가 시작됩니다');
+
+  if (st.error) setBadge('⚠ ' + st.error, 'error');
+  else setBadge(st.live ? '● LIVE' : '장 종료', st.live ? 'live' : '');
+}
+poll();
+setInterval(poll, POLL_MS);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+</script>
+</body>
+</html>

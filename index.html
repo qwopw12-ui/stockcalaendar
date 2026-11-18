@@ -342,6 +342,10 @@ body.vadr .adrv{display:block}
 .lnote,.fnote{display:none!important}
 
 body.vlive main,body.vlive .tools,body.vlive .ipobar{display:none!important}
+body.vnight main,body.vnight .tools,body.vnight .ipobar{display:none!important}
+.nightv{display:none;padding:0 24px 24px}body.vnight .nightv{display:block}
+.nightv iframe{display:block;width:100%;max-width:1000px;margin:0 auto;border:0;min-height:480px;background:transparent}
+@media(max-width:700px){.nightv{padding:0 0 16px}}
 .livev{display:none;padding:0 24px 24px}
 body.vlive .livev{display:block}
 .livev iframe{display:block;width:100%;max-width:1240px;border:0;border-radius:12px;min-height:600px;background:transparent}
@@ -701,7 +705,7 @@ html.dark .tsw .kn .sun{display:none}html.dark .tsw .kn .moon{display:block}
 <body>
 <header>
   <div>
-    <div class="thw"><div class="vtabs"><h1 class="vt on" data-v="main">증시 주요일정</h1><h1 class="vt" data-v="lock">보호예수 해제</h1><h1 class="vt" data-v="flow">머니 플로우</h1><h1 class="vt" data-v="subs">공모주 청약일정</h1><h1 class="vt" data-v="adr">공포·탐욕 지수 / ADR</h1><h1 class="vt" data-v="live">24시간 삼전닉스</h1></div><button class="tsw" id="tsw" type="button" aria-label="다크모드 전환"><span class="tl l">LIGHT<br>MODE</span><span class="tl d">DARK<br>MODE</span><span class="kn"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="#8a919c" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="#5d6470" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 14.6A8 8 0 1 1 9.4 4.5a6.4 6.4 0 0 0 10.1 10.1z"/><path d="M17 3.5v2.4M15.8 4.7h2.4M20.6 8.2v1.6M19.8 9h1.6"/></svg></span></button></div>
+    <div class="thw"><div class="vtabs"><h1 class="vt on" data-v="main">증시 주요일정</h1><h1 class="vt" data-v="lock">보호예수 해제</h1><h1 class="vt" data-v="flow">머니 플로우</h1><h1 class="vt" data-v="subs">공모주 청약일정</h1><h1 class="vt" data-v="adr">공포·탐욕 지수 / ADR</h1><h1 class="vt" data-v="live">24시간 삼전닉스</h1><h1 class="vt" data-v="night">야간선물</h1></div><button class="tsw" id="tsw" type="button" aria-label="다크모드 전환"><span class="tl l">LIGHT<br>MODE</span><span class="tl d">DARK<br>MODE</span><span class="kn"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="#8a919c" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="#5d6470" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 14.6A8 8 0 1 1 9.4 4.5a6.4 6.4 0 0 0 10.1 10.1z"/><path d="M17 3.5v2.4M15.8 4.7h2.4M20.6 8.2v1.6M19.8 9h1.6"/></svg></span></button></div>
   </div>
   <div class="tools">
     <input id="q" placeholder="종목·키워드 검색 (예: 실적, CPI, 엔비디아)">
@@ -733,6 +737,7 @@ html.dark .tsw .kn .sun{display:none}html.dark .tsw .kn .moon{display:block}
   </aside>
 </main>
 <section class="livev" id="livev"><iframe id="liveFrame" title="24시간 삼전닉스"></iframe></section>
+<section class="nightv" id="nightv"><iframe id="nightFrame" title="코스피200 야간선물"></iframe></section>
 <section class="adrv" id="adr">
 <div class="fgrow"><div class="fg fg-kr" id="fg">
     <div class="fg-top"><div><h2><svg class="flag" viewBox="-36 -24 72 48" aria-label="태극기"><rect x="-36" y="-24" width="72" height="48" fill="#fff"/><g transform="rotate(33.69)"><circle r="12" fill="#0047a0"/><path d="M-12 0A12 12 0 0 1 12 0A6 6 0 0 0 0 0A6 6 0 0 1-12 0z" fill="#cd2e3a"/></g><g fill="#000"><g transform="rotate(213.69)"><rect x="16" y="-6" width="2" height="12"/><rect x="19" y="-6" width="2" height="12"/><rect x="22" y="-6" width="2" height="12"/></g><g transform="rotate(33.69)"><rect x="16" y="-6" width="2" height="5.4"/><rect x="16" y="0.6" width="2" height="5.4"/><rect x="19" y="-6" width="2" height="5.4"/><rect x="19" y="0.6" width="2" height="5.4"/><rect x="22" y="-6" width="2" height="5.4"/><rect x="22" y="0.6" width="2" height="5.4"/></g><g transform="rotate(-33.69)"><rect x="16" y="-6" width="2" height="5.4"/><rect x="16" y="0.6" width="2" height="5.4"/><rect x="19" y="-6" width="2" height="12"/><rect x="22" y="-6" width="2" height="5.4"/><rect x="22" y="0.6" width="2" height="5.4"/></g><g transform="rotate(146.31)"><rect x="16" y="-6" width="2" height="12"/><rect x="19" y="-6" width="2" height="5.4"/><rect x="19" y="0.6" width="2" height="5.4"/><rect x="22" y="-6" width="2" height="12"/></g></g></svg><span class="usflag krflag">KR</span>한국 공포·탐욕 지수</h2><p class="q">지금 국내 증시를 움직이는 심리는 공포일까, 탐욕일까?</p></div></div>
@@ -1075,7 +1080,7 @@ document.querySelectorAll('.adrv [data-r]').forEach(box=>{const rk=box.dataset.r
 
 let adrInit=false;
 window.addEventListener('resize',()=>{if(VIEW==='adr')renderAdr()});
-function setView(v){VIEW=v;document.body.classList.toggle('vadr',v==='adr');if(v==='adr'){requestAnimationFrame(()=>{if(!adrInit){adCards();adrInit=true}renderAdr();renderFG()})}document.body.classList.toggle('vsubs',v==='subs');if(v==='subs')renderSubs();document.body.classList.toggle('vflow',v==='flow');if(v==='flow'){requestAnimationFrame(renderFlow)}document.querySelectorAll('.vt').forEach(b=>b.classList.toggle('on',b.dataset.v===v));document.body.classList.toggle('vlock',v==='lock');document.body.classList.toggle('vlive',v==='live');if(v==='live')liveStart();document.title=(v==='lock'?'보호예수 해제 일정':v==='flow'?'머니 플로우':v==='subs'?'공모주 청약일정':v==='adr'?'공포·탐욕 지수 / ADR':v==='live'?'24시간 삼전닉스':'증시 주요일정');renderGrid();renderList();try{localStorage.setItem('view',v)}catch(e){}}
+function setView(v){VIEW=v;document.body.classList.toggle('vadr',v==='adr');if(v==='adr'){requestAnimationFrame(()=>{if(!adrInit){adCards();adrInit=true}renderAdr();renderFG()})}document.body.classList.toggle('vsubs',v==='subs');if(v==='subs')renderSubs();document.body.classList.toggle('vflow',v==='flow');if(v==='flow'){requestAnimationFrame(renderFlow)}document.querySelectorAll('.vt').forEach(b=>b.classList.toggle('on',b.dataset.v===v));document.body.classList.toggle('vlock',v==='lock');document.body.classList.toggle('vlive',v==='live');if(v==='live')liveStart();document.body.classList.toggle('vnight',v==='night');if(v==='night')nightStart();document.title=(v==='lock'?'보호예수 해제 일정':v==='flow'?'머니 플로우':v==='subs'?'공모주 청약일정':v==='adr'?'공포·탐욕 지수 / ADR':v==='live'?'24시간 삼전닉스':v==='night'?'코스피200 야간선물':'증시 주요일정');renderGrid();renderList();try{localStorage.setItem('view',v)}catch(e){}}
 document.querySelectorAll('.vt').forEach(b=>b.onclick=()=>setView(b.dataset.v));
 const msel=document.getElementById('msel');MKEYS.forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k.replace('-','.');msel.appendChild(o)});msel.onchange=()=>goMonth(msel.value);
 
@@ -1089,6 +1094,10 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 function liveTheme(){const f=document.getElementById('liveFrame');try{const d=f.contentDocument;if(!d||!d.head)return;if(!d.getElementById('kdarkcss')){const s=d.createElement('style');s.id='kdarkcss';s.textContent='html.kdark{--bg:#1d2025;--card:#2a2e35;--ink:#e6e8ec;--sub:#a4abb6;--muted:#7d8591;--line:#3a3f48;--up:#f0565e;--down:#5b8ff0;--flat:#a4abb6;color-scheme:dark}html.kdark .pill{background:#2a2e35;color:#a4abb6}html.kdark .card{box-shadow:0 1px 3px rgba(0,0,0,.3)}html.kdark .gear:hover,html.kdark .panel .cancel{background:#353a42}html.kdark .chg .sep{color:#4a505a}html.kdark .panel input{background:#1d2025;color:#e6e8ec;border-color:#3a3f48}html.kdark .logo{background:#353a42}';d.head.appendChild(s)}d.documentElement.classList.toggle('kdark',document.documentElement.classList.contains('dark'))}catch(e){}}
 try{new MutationObserver(liveTheme).observe(document.documentElement,{attributes:true,attributeFilter:['class']})}catch(e){}
 function liveFit(){const f=document.getElementById('liveFrame');try{const d=f.contentDocument;if(d&&d.body){f.style.height=Math.max(600,d.documentElement.scrollHeight)+'px'}}catch(e){}}
+function nightTheme(){const f=document.getElementById('nightFrame');try{const d=f.contentDocument;if(d&&d.documentElement)d.documentElement.classList.toggle('kdark',document.documentElement.classList.contains('dark'))}catch(e){}}
+try{new MutationObserver(nightTheme).observe(document.documentElement,{attributes:true,attributeFilter:['class']})}catch(e){}
+function nightFit(){const f=document.getElementById('nightFrame');try{const d=f.contentDocument;if(d&&d.body){f.style.height=Math.max(480,d.documentElement.scrollHeight)+'px'}}catch(e){}}
+function nightStart(){const f=document.getElementById('nightFrame');if(!f.src){f.addEventListener('load',()=>{nightTheme();nightFit();try{new ResizeObserver(nightFit).observe(f.contentDocument.body)}catch(e){}});f.src='night.html'}else nightFit()}
 function liveStart(){const f=document.getElementById('liveFrame');if(!f.src){f.addEventListener('load',()=>{liveTheme();liveFit();try{const d=f.contentDocument;new ResizeObserver(liveFit).observe(d.body)}catch(e){}});f.src='live.html'}else liveFit()}
 ;(function(){const b=document.getElementById("tsw");if(!b)return;b.onclick=()=>{const on=document.documentElement.classList.toggle("dark");try{localStorage.setItem("kant-theme",on?"dark":"light")}catch(e){}}})();
 </script>
