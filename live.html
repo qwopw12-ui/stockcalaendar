@@ -93,7 +93,8 @@
   .head .chg{margin:0 0 0 auto;flex-direction:column;align-items:flex-end;gap:1px;white-space:nowrap;flex-shrink:0;font-size:20px;line-height:1.2}
   .head .chg .sep{display:none}
   .head{align-items:flex-start}
-  .head .name{padding-top:2px}
+  .head .name{padding-top:0}
+  .head .logo{width:42px;height:42px}
   .head .chg{align-self:flex-start}
   .head .chg .pct{order:1;font-size:1.3em;line-height:1}
   .head .chg .amt{order:2;margin-top:3px}
@@ -198,7 +199,7 @@ function buildCards(){
     <div class="card" id="c-${s.id}">
       <div class="head">
         <div class="logo" style="--c:${s.color}"><img src="https://ssl.pstatic.net/imgstock/fn/real/logo/stock/Stock${s.code}.svg" alt="${s.name} 로고" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('fb');this.remove()"><span>${s.logo}</span></div>
-        <div class="name">${s.name}</div>
+        <div class="name">${s.name} <span style="font-size:15px;color:var(--muted);font-weight:600">${s.code}</span></div>
       </div>
       <div class="src"><span class="dot stale"></span><span class="srcname">${s.src === 'bybit' ? 'Bybit' : 'Hyperliquid'}</span>해외 실시간 추정가</div>
       <div class="price"><span class="v">—</span><span class="u">원</span></div>
@@ -492,7 +493,7 @@ function drawSpark(cv){
   const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight; if (!W || !H) return;
   cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
   const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H);
-  const pts = d.pts.slice(); const lp = sparkLast(coin); if (lp) pts.push([Math.min(Date.now()/1000, d.end), lp]);
+  const pts = d.pts.slice(); const lp = sparkLast(coin); if (lp && Date.now()/1000 < d.end) pts.push([Date.now()/1000, lp]);
   const base = sparkBase(coin);
   let lo = Math.min(...pts.map(p=>p[1])), hi = Math.max(...pts.map(p=>p[1]));
   if (base){ lo = Math.min(lo, base); hi = Math.max(hi, base); }
