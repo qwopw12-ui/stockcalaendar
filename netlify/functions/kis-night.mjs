@@ -1,5 +1,5 @@
-// 야간선물 탭이 10초마다 부르는 주소: /api/kis-night
-// 응답은 Netlify CDN에 10초간 캐시 → 보는 사람이 몇 명이든 KIS 접속·함수 실행은 10초에 한 번 정도
+// 야간선물 탭이 5초마다 부르는 주소: /api/kis-night
+// 웹소켓은 쓰지 않음(수집기가 1분에 한 번만 접속). 여기선 REST 현재가로 최신값만 보탬, CDN 4초 캐시
 import { refresh, view } from "../lib/kis-night.mjs";
 
 export default async () => {

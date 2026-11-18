@@ -76,80 +76,136 @@ async function approvalKey(s, renew = false) {
 
 const num = (x) => { const v = parseFloat(x); return Number.isFinite(v) ? v : null; };
 
-// 웹소켓에 붙어서 체결 1건 받고 바로 끊기
-function oneTick(code, key, waitMs = 6000) {
+// ───────── 웹소켓: 1분에 한 번만 접속해서 ~22초 동안 들어오는 체결을 전부 받음 ─────────
+// (몇 초마다 새로 접속하면 한투 서버가 연결을 끊어버림 → ECONNRESET)
+function streamTicks(code, key, holdMs, onTick) {
   return new Promise((resolve) => {
-    let done = false;
-    const ws = new WS(WS_URL, { handshakeTimeout: 5000, perMessageDeflate: false });
-    const finish = (v) => { if (done) return; done = true; clearTimeout(timer); try { ws.close(); } catch {} resolve(v); };
-    const timer = setTimeout(() => finish({ quiet: true }), waitMs);
-    const onOpen = () => ws.send(JSON.stringify({
+    let done = false, got = 0;
+    const ws = new WS(WS_URL, { handshakeTimeout: 6000, perMessageDeflate: false });
+    const finish = (v = {}) => { if (done) return; done = true; clearTimeout(timer); try { ws.close(); } catch {} resolve({ got, ...v }); };
+    const timer = setTimeout(() => finish(), holdMs);
+    ws.on("open", () => ws.send(JSON.stringify({
       header: { approval_key: key, custtype: "P", tr_type: "1", "content-type": "utf-8" },
       body: { input: { tr_id: TR_ID, tr_key: code } },
-    }));
-    const onMsg = (raw) => {
-      const s = typeof raw === "string" ? raw : (raw?.data ?? raw).toString();
+    })));
+    ws.on("message", (raw) => {
+      const s = raw.toString();
       if (s[0] === "0" || s[0] === "1") {
         const parts = s.split("|");
         if (parts[1] !== TR_ID) return;
-        const f = parts[3].split("^");
-        let chg = num(f[F.vrss]), rate = num(f[F.ctrt]);
-        if (f[F.sign] === "4" || f[F.sign] === "5") { chg = -Math.abs(chg); rate = -Math.abs(rate); }
-        finish({ tick: { p: num(f[F.prpr]), chg, rate, o: num(f[F.oprc]), h: num(f[F.hgpr]), l: num(f[F.lwpr]), vol: num(f[F.vol]) } });
+        const n = parseInt(parts[2], 10) || 1, f = parts[3].split("^"), w = f.length / n;
+        for (let i = 0; i < n; i++) {
+          const g = (k) => f[i * w + k];
+          let chg = num(g(F.vrss)), rate = num(g(F.ctrt));
+          if (g(F.sign) === "4" || g(F.sign) === "5") { chg = -Math.abs(chg); rate = -Math.abs(rate); }
+          const p = num(g(F.prpr));
+          if (p) { got++; onTick({ p, chg, rate, o: num(g(F.oprc)), h: num(g(F.hgpr)), l: num(g(F.lwpr)), vol: num(g(F.vol)) }); }
+        }
         return;
       }
       try {
-        const b = JSON.parse(s).body;
+        const j = JSON.parse(s);
+        if (j.header?.tr_id === "PINGPONG") { ws.pong?.(raw); ws.send(s); return; }
+        const b = j.body;
         if (b?.rt_cd && b.rt_cd !== "0") finish({ error: `KIS: ${b.msg1}`, authFail: /approval|appkey|접속키/i.test(b.msg1 || "") });
       } catch {}
-    };
-    if (ws.on) { ws.on("open", onOpen); ws.on("message", onMsg); ws.on("error", (e) => finish({ error: `웹소켓 오류: ${e.code || ""} ${e.message}`.trim() })); ws.on("unexpected-response", (_q, r) => finish({ error: `웹소켓 접속 거부: HTTP ${r.statusCode}` })); ws.on("close", () => finish({ quiet: true })); }
-    else { ws.onopen = onOpen; ws.onmessage = onMsg; ws.onerror = () => finish({ error: "웹소켓 오류" }); ws.onclose = () => finish({ quiet: true }); }
+    });
+    ws.on("unexpected-response", (_q, r) => finish({ error: `웹소켓 접속 거부: HTTP ${r.statusCode}` }));
+    ws.on("error", (e) => finish({ error: `웹소켓 오류: ${e.code || ""} ${e.message}`.trim() }));
+    ws.on("close", () => finish());
   });
 }
 
-async function kisTick(s) {
-  if (!env("KIS_APP_KEY") || !env("KIS_APP_SECRET")) return { error: "환경변수 KIS_APP_KEY / KIS_APP_SECRET이 없습니다." };
-  const code = await frontMonthCode(s);
-  let res = await oneTick(code, await approvalKey(s));
-  if (res.authFail) res = await oneTick(code, await approvalKey(s, true));
-  return { ...res, code };
+// ───────── REST 현재가 (보는 사람이 있을 때 5초마다, 웹소켓 안 씀) ─────────
+async function accessToken(s, renew = false) {
+  const c = await s.get("token", { type: "json" });
+  if (!renew && c && Date.now() < c.exp - 600e3) return c.token;
+  if (c?.tried && Date.now() - c.tried < 65e3 && !c.token) return null;     // 토큰 발급은 1분에 1번만 가능
+  const r = await fetch(`${REST}/oauth2/tokenP`, {
+    method: "POST", headers: { "content-type": "application/json; utf-8" },
+    body: JSON.stringify({ grant_type: "client_credentials", appkey: env("KIS_APP_KEY"), appsecret: env("KIS_APP_SECRET") }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!j.access_token) { await s.setJSON("token", { ...(c || {}), tried: Date.now() }); return c?.token ?? null; }
+  await s.setJSON("token", { token: j.access_token, exp: Date.now() + (j.expires_in || 86400) * 1000, tried: Date.now() });
+  return j.access_token;
+}
+
+async function restQuote(s, code) {
+  const token = await accessToken(s);
+  if (!token) return null;
+  const u = `${REST}/uapi/domestic-futureoption/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=CM&FID_INPUT_ISCD=${encodeURIComponent(code)}`;
+  const r = await fetch(u, { headers: { "content-type": "application/json; charset=utf-8", authorization: `Bearer ${token}`,
+    appkey: env("KIS_APP_KEY"), appsecret: env("KIS_APP_SECRET"), tr_id: "FHMIF10000000", custtype: "P" } });
+  const j = await r.json().catch(() => ({}));
+  const o = j.output1;
+  if (j.rt_cd !== "0" || !o) return null;
+  const p = num(o.futs_prpr);
+  if (!p) return null;
+  let chg = num(o.futs_prdy_vrss), rate = num(o.futs_prdy_ctrt);
+  if (o.prdy_vrss_sign === "4" || o.prdy_vrss_sign === "5") { chg = -Math.abs(chg); rate = -Math.abs(rate); }
+  return { p, chg, rate, o: num(o.futs_oprc), h: num(o.futs_hgpr), l: num(o.futs_lwpr), vol: num(o.acml_vol) };
 }
 
 // ───────── 상태 ─────────
 const blank = (ses) => ({ id: ses.id, start: ses.start, end: ses.end, code: "", base: null, open: null,
-  high: null, low: null, last: null, chg: null, rate: null, vol: null, points: [], fetched_at: 0, error: null, ticks: 0 });
+  high: null, low: null, last: null, chg: null, rate: null, vol: null, points: [], fetched_at: 0, error: null, ticks: 0, rest_ok: null });
 
 function apply(st, tick, nowSec) {
   if (tick.chg != null) st.base = Math.round((tick.p - tick.chg) * 100) / 100;   // 전일(주간장) 종가
   Object.assign(st, { last: tick.p, chg: tick.chg, rate: tick.rate,
-    open: tick.o ?? st.open ?? tick.p, high: tick.h ?? st.high, low: tick.l ?? st.low, vol: tick.vol ?? st.vol });
+    open: tick.o ?? st.open ?? tick.p, high: tick.h ?? st.high, low: tick.l ?? st.low, vol: tick.vol ?? st.vol, last_at: nowSec });
   const b = Math.floor(nowSec / BUCKET) * BUCKET;
-  const lastPt = st.points[st.points.length - 1];
+  const pts = st.points, lastPt = pts[pts.length - 1];
   if (lastPt && lastPt[0] === b) lastPt[1] = tick.p;
-  else if (!lastPt || lastPt[0] < b) st.points.push([b, tick.p]);
+  else if (!lastPt || lastPt[0] < b) pts.push([b, tick.p]);
+  else {                                                     // 늦게 도착한 점은 제자리에 끼워 넣기
+    const i = pts.findIndex((q) => q[0] >= b);
+    if (pts[i][0] === b) pts[i][1] = tick.p; else pts.splice(i, 0, [b, tick.p]);
+  }
   st.ticks++;
 }
 
-/** 필요하면 KIS에서 새 값을 받아 저장하고, 현재 상태를 돌려준다. */
-export async function refresh({ force = false } = {}) {
-  const s = store();
-  const ses = session();
-  const key = `session-${ses.id}`;
+// 저장할 때 다른 호출이 그 사이 저장한 점과 합치기
+async function save(s, key, st) {
+  const cur = await s.get(key, { type: "json" });
+  if (cur && cur.id === st.id) {
+    const m = new Map(cur.points.map((q) => [q[0], q[1]]));
+    for (const [t, p] of st.points) m.set(t, p);
+    st.points = [...m.entries()].sort((x, y) => x[0] - y[0]);
+    if ((cur.last_at || 0) > (st.last_at || 0)) for (const k of ["last", "chg", "rate", "base", "high", "low", "vol", "last_at"]) st[k] = cur[k];
+  }
+  await s.setJSON(key, st);
+}
+
+/** 수집기(1분마다): 웹소켓으로 ~22초 동안 실제 체결을 받아 쌓는다. */
+export async function collect() {
+  const s = store(), ses = session(), key = `session-${ses.id}`;
+  if (!ses.live) return;
+  if (!env("KIS_APP_KEY") || !env("KIS_APP_SECRET")) return;
+  const st = (await s.get(key, { type: "json" })) ?? blank(ses);
+  try {
+    st.code = await frontMonthCode(s);
+    const onTick = (t) => apply(st, t, Date.now() / 1000);
+    let res = await streamTicks(st.code, await approvalKey(s), 22000, onTick);
+    if (res.authFail) res = await streamTicks(st.code, await approvalKey(s, true), 3000, onTick);
+    st.error = res.got ? null : (res.error || null);
+  } catch (e) { st.error = e.message; }
+  await save(s, key, st);
+}
+
+/** 화면 요청(5초마다): 웹소켓은 건드리지 않고 REST 현재가로 최신 값만 보탠다. */
+export async function refresh() {
+  const s = store(), ses = session(), key = `session-${ses.id}`;
   let st = (await s.get(key, { type: "json" })) ?? blank(ses);
   const now = Date.now() / 1000;
-  if (!ses.live || (!force && now - st.fetched_at < FRESH_SEC)) return st;
-
-  st.fetched_at = now;                                   // 동시에 들어온 다른 호출이 중복 접속하지 않게 먼저 표시
-  await s.setJSON(key, st);
-  const res = await kisTick(s).catch((e) => ({ error: e.message }));
-
-  const latest = (await s.get(key, { type: "json" })) ?? st;   // 그 사이 저장된 점이 있으면 합치기
-  if (latest.points.length > st.points.length) st = { ...latest, fetched_at: now };
-  if (res.code) st.code = res.code;
-  if (res.tick?.p) { apply(st, res.tick, now); st.error = null; }
-  else if (res.error) st.error = res.error;
-  await s.setJSON(key, st);
+  if (!ses.live || st.rest_ok === false || now - st.fetched_at < FRESH_SEC || !st.code) return st;
+  st.fetched_at = now;
+  const q = await restQuote(s, st.code).catch(() => null);
+  // 야간 값인지 확인: 웹소켓으로 받은 야간 시가와 같아야 채택 (다르면 주간 값이라 버림)
+  if (q && (st.open == null || Math.abs((q.o ?? 0) - st.open) < 0.01)) { apply(st, q, now); st.rest_ok = true; }
+  else if (q) st.rest_ok = false;
+  await save(s, key, st);
   return st;
 }
 
