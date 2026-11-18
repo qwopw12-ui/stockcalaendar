@@ -5,7 +5,7 @@ import { getStore } from "@netlify/blobs";
 import WebSocketPkg from "ws";
 import zlib from "node:zlib";
 
-const WS = globalThis.WebSocket ?? WebSocketPkg;
+const WS = WebSocketPkg;                 // ws 패키지 사용(Node 기본 WebSocket은 KIS 서버와 접속이 실패하고 원인도 안 알려줌)
 export const BUCKET = 10;                 // 차트 한 칸 = 10초
 const FRESH_SEC = 8;                      // 이 시간 안에 받은 값이 있으면 KIS에 다시 묻지 않음
 const KST = 9 * 3600 * 1000;
@@ -80,7 +80,7 @@ const num = (x) => { const v = parseFloat(x); return Number.isFinite(v) ? v : nu
 function oneTick(code, key, waitMs = 6000) {
   return new Promise((resolve) => {
     let done = false;
-    const ws = new WS(WS_URL);
+    const ws = new WS(WS_URL, { handshakeTimeout: 5000, perMessageDeflate: false });
     const finish = (v) => { if (done) return; done = true; clearTimeout(timer); try { ws.close(); } catch {} resolve(v); };
     const timer = setTimeout(() => finish({ quiet: true }), waitMs);
     const onOpen = () => ws.send(JSON.stringify({
@@ -103,7 +103,7 @@ function oneTick(code, key, waitMs = 6000) {
         if (b?.rt_cd && b.rt_cd !== "0") finish({ error: `KIS: ${b.msg1}`, authFail: /approval|appkey|접속키/i.test(b.msg1 || "") });
       } catch {}
     };
-    if (ws.on) { ws.on("open", onOpen); ws.on("message", onMsg); ws.on("error", (e) => finish({ error: `웹소켓 오류: ${e.message}` })); ws.on("close", () => finish({ quiet: true })); }
+    if (ws.on) { ws.on("open", onOpen); ws.on("message", onMsg); ws.on("error", (e) => finish({ error: `웹소켓 오류: ${e.code || ""} ${e.message}`.trim() })); ws.on("unexpected-response", (_q, r) => finish({ error: `웹소켓 접속 거부: HTTP ${r.statusCode}` })); ws.on("close", () => finish({ quiet: true })); }
     else { ws.onopen = onOpen; ws.onmessage = onMsg; ws.onerror = () => finish({ error: "웹소켓 오류" }); ws.onclose = () => finish({ quiet: true }); }
   });
 }
