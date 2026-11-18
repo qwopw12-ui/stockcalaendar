@@ -7,7 +7,7 @@ export default async () => {
     const st = await refresh();
     return Response.json(view(st), { headers: {
       "cache-control": "public, max-age=0, must-revalidate",
-      "netlify-cdn-cache-control": "public, s-maxage=10, stale-while-revalidate=10",
+      "netlify-cdn-cache-control": "public, s-maxage=4, stale-while-revalidate=4",
     } });
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500, headers: { "cache-control": "no-store" } });

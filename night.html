@@ -42,9 +42,9 @@
 </div>
 
 <script>
-// 데이터: 한국투자증권 KIS Open API — KRX 야간선물 실시간 체결(H0MFCNT0), 10초마다 갱신
+// 데이터: 한국투자증권 KIS Open API — KRX 야간선물 실시간 체결(H0MFCNT0), 5초마다 갱신
 // 기준선/색: 전일(주간장) 종가 — 위는 빨강, 아래는 파랑. 차트는 외부 라이브러리 없이 캔버스로 직접 그림
-const POLL_MS = 10000;
+const POLL_MS = 5000;
 const KST = 9 * 3600;
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, '0');

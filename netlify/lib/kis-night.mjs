@@ -6,8 +6,8 @@ import WebSocketPkg from "ws";
 import zlib from "node:zlib";
 
 const WS = WebSocketPkg;                 // ws 패키지 사용(Node 기본 WebSocket은 KIS 서버와 접속이 실패하고 원인도 안 알려줌)
-export const BUCKET = 10;                 // 차트 한 칸 = 10초
-const FRESH_SEC = 8;                      // 이 시간 안에 받은 값이 있으면 KIS에 다시 묻지 않음
+export const BUCKET = 5;                  // 차트 한 칸 = 5초
+const FRESH_SEC = 4;                      // 이 시간 안에 받은 값이 있으면 KIS에 다시 묻지 않음
 const KST = 9 * 3600 * 1000;
 const DAY = 864e5;
 const REST = process.env.KIS_REST_URL || "https://openapi.koreainvestment.com:9443";
@@ -155,9 +155,12 @@ export async function refresh({ force = false } = {}) {
 
 export function view(st) {
   const ses = session();
+  // 18:00 시작점: 첫 체결이 18:00보다 늦게 잡혔으면 KIS가 준 야간 시가를 18:00 자리에 둬서 선이 18:00부터 시작하게
+  let points = st.points;
+  if (st.open != null && points.length && points[0][0] > st.start) points = [[st.start, st.open], ...points];
   return {
     start: st.start, end: st.end, bucket: BUCKET, live: ses.live && ses.id === st.id,
     code: st.code, base: st.base, open: st.open, high: st.high, low: st.low,
-    last: st.last, chg: st.chg, rate: st.rate, vol: st.vol, error: st.error, points: st.points,
+    last: st.last, chg: st.chg, rate: st.rate, vol: st.vol, error: st.error, points,
   };
 }
