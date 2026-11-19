@@ -105,6 +105,13 @@ function draw() {
     ctx.fillStyle = C.sub; ctx.fillText(`${pad(h)}:00`, Math.min(Math.max(X(t), x0 + 16), x1 - 16), y1 + 10);
   }
 
+  // 06:00 세로줄: 한국 야간선물 종료
+  { const tx = S.start + 12 * 3600;
+    if (tx < S.end) { const x = Math.round(X(tx)) + .5;
+      ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = C.sub; ctx.globalAlpha = .55;
+      ctx.beginPath(); ctx.moveTo(x, y0 - 6); ctx.lineTo(x, y1); ctx.stroke(); ctx.restore();
+      ctx.font = `600 11px ${FONT}`; ctx.fillStyle = C.sub; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+      ctx.fillText('한국 야간선물 종료', x - 5, y0 - 4); } }
   // 전일 종가 점선
   const yb = base != null ? Math.round(Y(base)) + .5 : null;
   if (yb != null) {
@@ -196,21 +203,18 @@ const BASE_LABEL = '06:59 기준';
 $('nm').textContent = NAME; document.title = NAME;
 const API = 'https://api.hyperliquid.xyz/info';
 const post = b => fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b) }).then(r => r.json());
-// 표시 구간: 한국시간 18:00 ~ 익일 06:00 (06:00~18:00 사이에는 직전 밤 구간을 보여줌)
+// 표시 구간: 한국시간 18:00 ~ 익일 06:59 (07:00~18:00 사이에는 직전 밤 구간을 보여줌)
 function sessionWindow() {
   const now = Date.now() / 1000, k = new Date((now + KST) * 1000);
   let d = Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate()) / 1000 - KST;   // 오늘 00:00 KST (UTC초)
   if (k.getUTCHours() < 18) d -= 86400;                                                // 18시 전이면 어제 18:00 시작
   const start = d + 18 * 3600;
-  return { start, end: start + 12 * 3600, live: now >= start && now < start + 12 * 3600 };
+  return { start, end: start + 13 * 3600, live: now >= start && now < start + 13 * 3600 };   // 18:00 ~ 익일 06:59
 }
 let lastKey = '', cache = { start: null, points: [] };
 let baseCache = { t: null, v: null };
-function baseTime() {                       // 가장 최근의 한국시간 06:59 (그 1분봉이 끝난 뒤부터 사용)
-  const now = Date.now() / 1000, k = new Date((now + KST) * 1000);
-  let t = Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate()) / 1000 - KST + 6 * 3600 + 59 * 60;
-  if (now < t + 60) t -= 86400;
-  return t;
+function baseTime() {                       // 표시 중인 밤 구간이 시작한 날의 한국시간 06:59 (18:00 시작 11시간 1분 전)
+  return sessionWindow().start - 11 * 3600 - 60;
 }
 async function poll() {
   const w = sessionWindow();
@@ -231,6 +235,7 @@ async function poll() {
     const [meta, ctxs] = hm ? await hm() : await post({ type:'metaAndAssetCtxs', dex:'xyz' });
     const i = meta.universe.findIndex(u => u.name === COIN);
     if (i >= 0) { const px = +ctxs[i].markPx; if (px > 0) last = px; }
+    if (!w.live && cache.points.length) last = cache.points[cache.points.length - 1][1];   // 장 끝난 뒤에는 06:59 마지막 값 그대로
     // 기준: 가장 최근 한국시간 06:59 1분봉 종가
     const bt = baseTime();
     if (baseCache.t !== bt) {

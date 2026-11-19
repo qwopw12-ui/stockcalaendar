@@ -198,7 +198,7 @@ async function poll() {
   if (st.start == null) { setTag('⚠ ' + (st.error || '오류'), 'error'); overlay(true, '⚠ 데이터 오류', st.error || ''); return; }
 
   const key = JSON.stringify([st.start, st.points.length, st.last, st.base, st.live]);
-  if (key !== lastKey) { lastKey = key; S = st; redraw(); }
+  if (key !== lastKey) { lastKey = key; S = { ...st, end: st.end + 3600 }; redraw(); }   // 축은 06:59까지(데이터는 06:00까지, 이후 빈칸)
 
   // 현재가 (전일 종가 대비)
   if (st.last != null) {

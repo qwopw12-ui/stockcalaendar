@@ -366,6 +366,9 @@ function lastUsClose(){                   // 가장 최근 미국 정규장 마�
   }
   return null;
 }
+// 액면분할 보정: 분할 전 가격(종가·분봉)을 분할 후 기준으로 나눔 (t = 분할 후 첫 거래 시각, UTC초)
+const SPLITS = { 'xyz:SNDK': [{ t: Date.UTC(2026,10,20,14,30)/1000, r: 8 }] };   // 샌디스크 8:1 (2026-11-20 개장부터)
+const splitAdj = (coin, t, v) => (SPLITS[coin] || []).reduce((x, sp) => t < sp.t ? x / sp.r : x, v);
 let usBase = null;
 async function loadUsClose(){
   const b = lastUsClose(); if (!b) return;
@@ -377,7 +380,7 @@ async function loadUsClose(){
         body: JSON.stringify({ type:'candleSnapshot', req:{ coin:s.coin, interval:'1m', startTime:b.t-5*60e3, endTime:b.t+60e3 } }) });
       const k = await r.json();
       const c = k.filter(x => x.t < b.t).pop();      // 16:00 직전 1분봉 종가
-      if (c) s.close = Number(c.c);
+      if (c) s.close = splitAdj(s.coin, c.t/1000, Number(c.c));
     }catch(e){}
     renderUs(s);
   }));
@@ -537,7 +540,7 @@ async function loadSparks(){
     try{
       const k = await (await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ type:'candleSnapshot', req:{ coin, interval:'5m', startTime: w.start*1000, endTime: Math.min(Date.now(), w.end*1000) } }) })).json();
-      SPK[coin] = { start: w.start, end: w.end, pts: k.filter(x => x.t/1000 >= w.start && x.t/1000 < w.end).map(x => [x.t/1000 + 300, +x.c]) };
+      SPK[coin] = { start: w.start, end: w.end, pts: k.filter(x => x.t/1000 >= w.start && x.t/1000 < w.end).map(x => [x.t/1000 + 300, splitAdj(coin, x.t/1000, +x.c)]) };
     }catch(e){}
   }
   drawSparks();
