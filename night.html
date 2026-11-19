@@ -197,6 +197,9 @@ async function poll() {
   catch (e) { setTag('⚠ 서버 응답 없음', 'error'); return; }
   if (st.start == null) { setTag('⚠ ' + (st.error || '오류'), 'error'); overlay(true, '⚠ 데이터 오류', st.error || ''); return; }
 
+  // 장 마감 후에는 마지막 값(06:00 종가)을 06:00 자리에 찍어 선이 06:00까지 이어지게
+  if (!st.live && st.last != null && st.points.length && st.points[st.points.length - 1][0] < st.end)
+    st.points = [...st.points, [st.end, st.last]];
   const key = JSON.stringify([st.start, st.points.length, st.last, st.base, st.live]);
   if (key !== lastKey) { lastKey = key; S = st; redraw(); }
 
