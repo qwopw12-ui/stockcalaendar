@@ -105,6 +105,16 @@ function draw() {
     ctx.fillStyle = C.sub; ctx.fillText(`${pad(h)}:00`, Math.min(Math.max(X(t), x0 + 16), x1 - 16), y1 + 10);
   }
 
+  // 06:00 세로줄: 한국 야간선물 종료 (강조)
+  { const tx = S.kEnd;
+    if (tx > S.start && tx < S.end) { const x = Math.round(X(tx)) + .5, OC = '#f08c00';
+      ctx.save(); ctx.strokeStyle = OC; ctx.lineWidth = 1.6; ctx.setLineDash([5, 3]);
+      ctx.beginPath(); ctx.moveTo(x, y0 - 4); ctx.lineTo(x, y1); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = `700 11px ${FONT}`; const lb = '한국 야간선물 종료', tw = ctx.measureText(lb).width + 14, th = 20;
+      const bx = Math.max(x0, x - tw - 6), by = y0 - th - 6;
+      ctx.fillStyle = OC; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, tw, th, 6) : ctx.rect(bx, by, tw, th); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(lb, bx + tw / 2, by + th / 2 + .5);
+      ctx.restore(); } }
   // 전일 종가 점선
   const yb = base != null ? Math.round(Y(base)) + .5 : null;
   if (yb != null) {
@@ -198,7 +208,7 @@ async function poll() {
   if (st.start == null) { setTag('⚠ ' + (st.error || '오류'), 'error'); overlay(true, '⚠ 데이터 오류', st.error || ''); return; }
 
   const key = JSON.stringify([st.start, st.points.length, st.last, st.base, st.live]);
-  if (key !== lastKey) { lastKey = key; S = { ...st, end: st.end + 3600 }; redraw(); }   // 축은 06:59까지(데이터는 06:00까지, 이후 빈칸)
+  if (key !== lastKey) { lastKey = key; S = { ...st, end: st.end + 3600, kEnd: st.end }; redraw(); }   // 축은 06:59까지(데이터는 06:00까지, 이후 빈칸)
 
   // 현재가 (전일 종가 대비)
   if (st.last != null) {
