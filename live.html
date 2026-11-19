@@ -428,7 +428,7 @@ setInterval(() => { loadUsClose(); refreshUs(); }, REFRESH_SEC * 1000);
 // ===== 야간선물 차트 (night.html) =====
 (function(){
   const f = document.getElementById('nightFrame'); if (!f) return;
-  const sync = () => { try{ const d = f.contentDocument; if (d && d.documentElement){ d.documentElement.classList.toggle('kdark', document.documentElement.classList.contains('kdark')); if (!d.getElementById('fullw')){ const s=d.createElement('style'); s.id='fullw'; s.textContent='.wrap{max-width:none!important;padding-top:0!important;padding-bottom:0!important}'; d.head.appendChild(s);} } }catch(e){} };
+  const sync = () => { try{ const d = f.contentDocument; if (d && d.documentElement){ d.documentElement.classList.toggle('kdark', document.documentElement.classList.contains('kdark')); if (!d.getElementById('fullw')){ const s=d.createElement('style'); s.id='fullw'; s.textContent='.wrap{max-width:none!important;padding-top:0!important;padding-bottom:0!important}.px .chg{font-size:.8em!important;margin-left:8px!important}'; d.head.appendChild(s);} } }catch(e){} };
   const fit = () => { try{ const d = f.contentDocument; if (d && d.body) { const w = d.querySelector('.wrap'); f.style.height = Math.ceil(w ? w.getBoundingClientRect().bottom : d.documentElement.scrollHeight) + 'px'; }; }catch(e){} };
   f.addEventListener('load', () => { sync(); fit(); try{ new ResizeObserver(fit).observe(f.contentDocument.body); }catch(e){} });
   try{ new MutationObserver(sync).observe(document.documentElement, {attributes:true, attributeFilter:['class']}); }catch(e){}
@@ -476,7 +476,7 @@ refreshSox(); setInterval(refreshSox, 30000);
 // ===== 미국 지수 차트 (usfut.html) — 폭·다크모드 맞추기 =====
 (function(){
   document.querySelectorAll('iframe.usf').forEach(f => {
-    const sync = () => { try{ const d = f.contentDocument; if (d && d.documentElement){ d.documentElement.classList.toggle('kdark', document.documentElement.classList.contains('kdark')); if (!d.getElementById('fullw')){ const s=d.createElement('style'); s.id='fullw'; s.textContent='.wrap{max-width:none!important;padding-top:0!important;padding-bottom:0!important}'; d.head.appendChild(s);} } }catch(e){} };
+    const sync = () => { try{ const d = f.contentDocument; if (d && d.documentElement){ d.documentElement.classList.toggle('kdark', document.documentElement.classList.contains('kdark')); if (!d.getElementById('fullw')){ const s=d.createElement('style'); s.id='fullw'; s.textContent='.wrap{max-width:none!important;padding-top:0!important;padding-bottom:0!important}.px .chg{font-size:.8em!important;margin-left:8px!important}'; d.head.appendChild(s);} } }catch(e){} };
     const fit = () => { try{ const d = f.contentDocument; if (d && d.body) { const w = d.querySelector('.wrap'); f.style.height = Math.ceil(w ? w.getBoundingClientRect().bottom : d.documentElement.scrollHeight) + 'px'; }; }catch(e){} };
     f.addEventListener('load', () => { sync(); fit(); try{ new ResizeObserver(fit).observe(f.contentDocument.body); }catch(e){} });
     try{ new MutationObserver(sync).observe(document.documentElement, {attributes:true, attributeFilter:['class']}); }catch(e){}
