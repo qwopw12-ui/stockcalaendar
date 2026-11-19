@@ -128,6 +128,16 @@
 
 <script>
 const API = 'https://api.hyperliquid.xyz/info';
+// 하이퍼리퀴드 현재가(전 종목 한 번에)는 페이지에서 한 번만 받아 카드·차트가 같이 씀 (4초 안에 다시 부르면 받은 값 재사용) — 호출 한도 절약
+let _hlP = null, _hlT = 0;
+window.hlMeta = () => {
+  if (_hlP && Date.now() - _hlT < 4800) return _hlP;
+  _hlT = Date.now();
+  _hlP = fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type:'metaAndAssetCtxs', dex:'xyz' }) })
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  _hlP.catch(() => { _hlT = 0; });
+  return _hlP;
+};
 const REFRESH_SEC = 10;
 const FX_COIN = 'xyz:KRW';
 const CLOSE_API = '/api/krx-close';      // Netlify 함수: 네이버 KRX 종가
@@ -271,10 +281,7 @@ async function refreshCex(){
 async function refresh(){
   const updated = document.getElementById('updated') || { set className(v){}, set textContent(v){} };
   try{
-    const res = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ type:'metaAndAssetCtxs', dex:'xyz' }) });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const [meta, ctxs] = await res.json();
+    const [meta, ctxs] = await hlMeta();
     const byName = {};
     meta.universe.forEach((u,i) => byName[u.name] = ctxs[i]);
 
@@ -410,8 +417,7 @@ function renderUs(s){
 }
 async function refreshUs(){
   try{
-    const res = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type:'metaAndAssetCtxs', dex:'xyz' }) });
-    const [meta, ctxs] = await res.json();
+    const [meta, ctxs] = await hlMeta();
     meta.universe.forEach((u,i) => { const s = US.find(x => x.coin === u.name); if (s){ const px = Number(ctxs[i].midPx || ctxs[i].markPx); if (px > 0) s.usd = px; } });
     US.forEach(renderUs);
   }catch(e){ document.querySelectorAll('#usgrid .dot').forEach(d => d.classList.add('stale')); }
@@ -531,7 +537,7 @@ async function loadSparks(){
   }
   drawSparks();
 }
-setTimeout(loadSparks, 8000); setInterval(loadSparks, 120000); setInterval(drawSparks, 10000);
+setTimeout(loadSparks, 5000); setInterval(loadSparks, 60000); setInterval(drawSparks, 10000);
 window.addEventListener('resize', drawSparks);
 try{ new MutationObserver(drawSparks).observe(document.documentElement, {attributes:true, attributeFilter:['class']}); }catch(e){}
 // 등락 표시를 종목명 오른쪽으로 이동

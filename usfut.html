@@ -44,7 +44,7 @@
 <script>
 // 데이터: 한국투자증권 KIS Open API — KRX 야간선물 실시간 체결(H0MFCNT0), 5초마다 갱신
 // 기준선/색: 전일(주간장) 종가 — 위는 빨강, 아래는 파랑. 차트는 외부 라이브러리 없이 캔버스로 직접 그림
-const POLL_MS = 10000;
+const POLL_MS = 5000;
 const KST = 9 * 3600;
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, '0');
@@ -226,7 +226,9 @@ async function poll() {
     cache.points = [...m.values()].sort((a, b) => a[0] - b[0]);
     let last = cache.points.length ? cache.points[cache.points.length - 1][1] : null;
     // 현재가: 하이퍼리퀴드 마크가격
-    const [meta, ctxs] = await post({ type:'metaAndAssetCtxs', dex:'xyz' });
+    // 같은 페이지(야간선물/반도체)에 들어가 있으면 부모가 받은 현재가를 같이 씀
+    let hm = null; try { if (window.parent !== window && window.parent.hlMeta) hm = window.parent.hlMeta; } catch (e) {}
+    const [meta, ctxs] = hm ? await hm() : await post({ type:'metaAndAssetCtxs', dex:'xyz' });
     const i = meta.universe.findIndex(u => u.name === COIN);
     if (i >= 0) { const px = +ctxs[i].markPx; if (px > 0) last = px; }
     // 기준: 가장 최근 한국시간 06:59 1분봉 종가
