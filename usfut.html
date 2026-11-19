@@ -44,7 +44,7 @@
 <script>
 // 데이터: 한국투자증권 KIS Open API — KRX 야간선물 실시간 체결(H0MFCNT0), 5초마다 갱신
 // 기준선/색: 전일(주간장) 종가 — 위는 빨강, 아래는 파랑. 차트는 외부 라이브러리 없이 캔버스로 직접 그림
-const POLL_MS = 5000;
+const POLL_MS = 10000;
 const KST = 9 * 3600;
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, '0');
@@ -217,7 +217,10 @@ async function poll() {
   try {
     if (cache.start !== w.start) cache = { start: w.start, points: [] };
     const from = cache.points.length ? (cache.points[cache.points.length - 1][0] - 60) * 1000 : w.start * 1000;
-    const k = await post({ type:'candleSnapshot', req:{ coin: COIN, interval:'1m', startTime: from, endTime: Math.min(Date.now(), w.end * 1000) } });
+    // 분봉은 30초에 한 번만 (하이퍼리퀴드 호출 한도 때문에), 현재가는 매번
+    const needK = !cache.points.length || Date.now() - (cache.kAt || 0) > 30000;
+    const k = needK ? await post({ type:'candleSnapshot', req:{ coin: COIN, interval:'1m', startTime: from, endTime: Math.min(Date.now(), w.end * 1000) } }) : [];
+    if (needK) cache.kAt = Date.now();
     const m = new Map(cache.points.map(p => [p[0], p]));
     for (const c of k) { const t = c.t / 1000; if (t >= w.start && t < w.end) m.set(t, [t, +c.c, +c.o]); }
     cache.points = [...m.values()].sort((a, b) => a[0] - b[0]);

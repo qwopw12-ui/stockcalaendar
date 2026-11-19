@@ -531,7 +531,7 @@ async function loadSparks(){
   }
   drawSparks();
 }
-loadSparks(); setInterval(loadSparks, 60000); setInterval(drawSparks, 10000);
+setTimeout(loadSparks, 8000); setInterval(loadSparks, 120000); setInterval(drawSparks, 10000);
 window.addEventListener('resize', drawSparks);
 try{ new MutationObserver(drawSparks).observe(document.documentElement, {attributes:true, attributeFilter:['class']}); }catch(e){}
 // 등락 표시를 종목명 오른쪽으로 이동
@@ -556,7 +556,25 @@ function renderEk(){
 function kstNow(){ return new Date(Date.now() + 9*3600e3); }
 loadKospi().then(renderEk); setInterval(loadKospi, 600000); setInterval(renderEk, 10000); setTimeout(renderEk, 3000);
 // 화면이 좁아져도 PC 화면 배치 그대로 — 폭이 1072px보다 작으면 전체를 같은 비율로 축소
-(function(){ const D = 1072; const fit = () => { const w = document.documentElement.clientWidth; document.body.style.zoom = w < D ? (w / D).toFixed(4) : ''; }; fit(); window.addEventListener('resize', fit); })();
+(function(){
+  const D = 1072, wrap = document.querySelector('.wrap'), outer = document.createElement('div');
+  wrap.before(outer); outer.appendChild(wrap);
+  let on = false;
+  const fit = () => {
+    const w = document.documentElement.clientWidth;
+    if (w < D) {
+      const s = w / D;
+      if (!on) { on = true; document.body.style.padding = '0'; Object.assign(wrap.style, { width:'1040px', maxWidth:'none', margin:'0', padding:'28px 16px', boxSizing:'content-box', transformOrigin:'0 0' }); outer.style.overflow = 'hidden'; }
+      wrap.style.transform = `scale(${s})`;
+      outer.style.height = Math.ceil(wrap.offsetHeight * s) + 'px';
+    } else if (on) {
+      on = false; document.body.style.padding = ''; ['width','maxWidth','margin','padding','boxSizing','transformOrigin','transform'].forEach(k => wrap.style[k] = '');
+      outer.style.height = ''; outer.style.overflow = '';
+    }
+  };
+  fit(); window.addEventListener('resize', fit);
+  try{ new ResizeObserver(fit).observe(wrap); }catch(e){}
+})();
 </script>
 </body>
 </html>

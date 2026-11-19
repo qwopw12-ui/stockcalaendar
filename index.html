@@ -269,7 +269,7 @@ body.vsubs .subs{display:grid}
 @media(max-width:1200px){.subs{grid-template-columns:1fr}}
 @media(max-width:600px){.subs{padding:0 8px 16px}.sbw{min-height:84px}.sbb{font-size:10px;height:18px;line-height:18px;padding:0 4px}.sbb small{display:none}.sbleg{position:static;margin-top:6px}.sbhead{flex-direction:column}}
 .ad-vsm{font-size:11px;font-weight:500;color:#9aa1ab;margin-left:2px}
-.adrv{display:none;padding:0 24px 24px;max-width:1290px;min-width:1110px;box-sizing:border-box}
+.adrv{display:none;padding:0 24px 24px;max-width:1290px}
 .ad-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
 .ad-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .ad-card .l b{display:block;font-size:14px;color:var(--sub);font-weight:600;margin-bottom:4px}
@@ -1096,7 +1096,13 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 function liveTheme(){const f=document.getElementById('liveFrame');try{const d=f.contentDocument;if(!d||!d.head)return;if(!d.getElementById('kdarkcss')){const s=d.createElement('style');s.id='kdarkcss';s.textContent='html.kdark{--bg:#1d2025;--card:#2a2e35;--ink:#e6e8ec;--sub:#a4abb6;--muted:#7d8591;--line:#3a3f48;--up:#f0565e;--down:#5b8ff0;--flat:#a4abb6;color-scheme:dark}html.kdark .pill{background:#2a2e35;color:#a4abb6}html.kdark .card{box-shadow:0 1px 3px rgba(0,0,0,.3)}html.kdark .gear:hover,html.kdark .panel .cancel{background:#353a42}html.kdark .chg .sep{color:#4a505a}html.kdark .panel input{background:#1d2025;color:#e6e8ec;border-color:#3a3f48}html.kdark .logo{background:#353a42}';d.head.appendChild(s)}d.documentElement.classList.toggle('kdark',document.documentElement.classList.contains('dark'))}catch(e){}}
 try{new MutationObserver(liveTheme).observe(document.documentElement,{attributes:true,attributeFilter:['class']})}catch(e){}
 // 공포·탐욕/ADR 탭: 화면이 좁아도 PC 배치 그대로 — 1110px보다 좁으면 같은 비율로 축소
-function adrFit(){const el=document.getElementById('adr');if(!el)return;const w=document.documentElement.clientWidth;el.style.zoom=w<1110?(w/1110).toFixed(4):''}
+let adrIn=null,adrOn=false;
+function adrFit(){const el=document.getElementById('adr');if(!el)return;
+ if(!adrIn){adrIn=document.createElement('div');while(el.firstChild)adrIn.appendChild(el.firstChild);el.appendChild(adrIn);try{new ResizeObserver(adrFit).observe(adrIn)}catch(e){}}
+ const w=el.parentElement.clientWidth||document.documentElement.clientWidth,D=1110;
+ if(w<D){const s=w/D;if(!adrOn){adrOn=true;el.style.padding='0';el.style.overflow='hidden';Object.assign(adrIn.style,{width:D+'px',padding:'0 24px 24px',boxSizing:'border-box',transformOrigin:'0 0'})}
+  adrIn.style.transform=`scale(${s})`;el.style.height=Math.ceil(adrIn.offsetHeight*s)+'px'}
+ else if(adrOn){adrOn=false;el.style.padding='';el.style.overflow='';el.style.height='';['width','padding','boxSizing','transformOrigin','transform'].forEach(k=>adrIn.style[k]='')}}
 window.addEventListener('resize',adrFit);document.addEventListener('DOMContentLoaded',adrFit);setTimeout(adrFit,0);
 function liveFit(){const f=document.getElementById('liveFrame');try{const d=f.contentDocument;if(d&&d.body){f.style.height=Math.max(600,d.documentElement.scrollHeight)+'px'}}catch(e){}}
 function nightTheme(){const f=document.getElementById('nightFrame');try{const d=f.contentDocument;if(d&&d.documentElement)d.documentElement.classList.toggle('kdark',document.documentElement.classList.contains('dark'))}catch(e){}}
