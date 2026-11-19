@@ -216,10 +216,10 @@ async function poll() {
   const w = sessionWindow();
   try {
     if (cache.start !== w.start) cache = { start: w.start, points: [] };
-    const from = cache.points.length ? (cache.points[cache.points.length - 1][0] - 120) * 1000 : w.start * 1000;
+    const from = cache.points.length ? (cache.points[cache.points.length - 1][0] - 60) * 1000 : w.start * 1000;
     const k = await post({ type:'candleSnapshot', req:{ coin: COIN, interval:'1m', startTime: from, endTime: Math.min(Date.now(), w.end * 1000) } });
     const m = new Map(cache.points.map(p => [p[0], p]));
-    for (const c of k) { const t = c.t / 1000; if (t >= w.start && t < w.end) m.set(t + 60, [t + 60, +c.c, +c.o]); }   // 1분봉 종가는 그 분이 끝나는 시각에 찍음 → 05:59봉 종가가 06:00 자리
+    for (const c of k) { const t = c.t / 1000; if (t >= w.start && t < w.end) m.set(t, [t, +c.c, +c.o]); }
     cache.points = [...m.values()].sort((a, b) => a[0] - b[0]);
     let last = cache.points.length ? cache.points[cache.points.length - 1][1] : null;
     // 현재가: 하이퍼리퀴드 마크가격
