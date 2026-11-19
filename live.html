@@ -551,7 +551,8 @@ function renderEk(){
   const el = document.getElementById('ek'), ce = document.getElementById('ekc'); if (!el || !KOSPI || window.NIGHT_R == null) return;
   const k = kstNow(), today = k.toISOString().slice(0,10), h = k.getUTCHours();
   // 06:00~18:00에는 직전 야간장 등락률이 남아 있으므로, 그날 장이 끝났으면 전일 종가를 기준으로
-  const base = (h >= 6 && h < 18 && KOSPI.date === today) ? KOSPI.prevClose : KOSPI.close;
+  const openH = today === '2026-11-19' ? 19 : 18;   // 수능일은 야간장 19:00 개장
+  const base = (h >= 6 && h < openH && KOSPI.date === today) ? KOSPI.prevClose : KOSPI.close;
   const r = window.NIGHT_R, v = base * (1 + r/100), c = v - base;
   el.textContent = v.toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2});
   const cls = c > 0 ? 'up' : c < 0 ? 'down' : '';

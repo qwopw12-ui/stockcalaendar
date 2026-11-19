@@ -23,12 +23,18 @@ const kstDate = (ms) => new Date(ms + KST).toISOString().slice(0, 10).replaceAll
 const isWeekday = (ms) => { const d = new Date(ms + KST).getUTCDay(); return d >= 1 && d <= 5; };
 
 // 표시할 세션: 평일 18:00 ~ 익일 06:00 KST. 주말 밤은 직전 금요일 세션.
+// 개장 시각이 다른 날(예: 수능일 19:00 개장) — 그날만 시작 시각을 바꾼다. 끝은 항상 익일 06:00
+const OPEN_HOUR = { "20261119": 19 };
 export function session(nowMs = Date.now()) {
   const k = new Date(nowMs + KST);
-  let start = Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate(), 18, 0) - KST;
-  if (nowMs < start) start -= DAY;
-  while (!isWeekday(start)) start -= DAY;
-  const end = start + 12 * 3600 * 1000;
+  const day0 = (ms) => { const x = new Date(ms + KST); return Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate()) - KST; };
+  const startOf = (d0) => d0 + (OPEN_HOUR[kstDate(d0)] ?? 18) * 3600 * 1000;
+  let d = Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate()) - KST;
+  if (nowMs < startOf(d)) d -= DAY;
+  while (!isWeekday(d)) d -= DAY;
+  d = day0(d);
+  const start = startOf(d);
+  const end = d + 30 * 3600 * 1000;
   return { id: kstDate(start), start: start / 1000, end: end / 1000, live: nowMs >= start && nowMs < end };
 }
 
