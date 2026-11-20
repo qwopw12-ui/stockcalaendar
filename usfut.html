@@ -50,6 +50,28 @@ const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, '0');
 const f2 = v => (v == null || isNaN(v)) ? '--' : Number(v).toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const FONT = '"Pretendard","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+// 세로 표시선 (시각 tx에 색 col 점선 + 위쪽 라벨)
+function markLine(ctx, X, tx, lb, col, x0, y0, y1) {
+  if (!(tx > S.start && tx < S.end)) return;
+  const x = Math.round(X(tx)) + .5;
+  ctx.save(); ctx.strokeStyle = rgba(col, .5); ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(x, y0 - 4); ctx.lineTo(x, y1); ctx.stroke(); ctx.setLineDash([]);
+  ctx.font = `600 11px ${FONT}`; const tw = ctx.measureText(lb).width + 14, th = 20;
+  const bx = Math.max(x0, x - tw - 6), by = y0 - th - 6;
+  ctx.fillStyle = rgba(col, .12); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, tw, th, 6) : ctx.rect(bx, by, tw, th); ctx.fill();
+  ctx.fillStyle = rgba(col, .85); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(lb, bx + tw / 2, by + th / 2 + .5);
+  ctx.restore();
+}
+// 미국 정규장 시작: 밤 구간이 시작한 날(한국 날짜)의 뉴욕 09:30 → 서머타임이면 22:30, 아니면 23:30 (한국시간)
+function usOpenAt(start) {
+  const k = new Date((start + 9 * 3600) * 1000), y = k.getUTCFullYear(), m = k.getUTCMonth(), d = k.getUTCDate();
+  for (const off of [4, 5]) {                       // EDT(UTC-4) / EST(UTC-5) 중 실제 뉴욕 시각이 9:30인 쪽
+    const t = Date.UTC(y, m, d, 9 + off, 30) / 1000;
+    const h = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hour12: false }).format(new Date(t * 1000));
+    if (h.replace(/^24/, '00') === '09:30') return t;
+  }
+  return null;
+}
 const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
 function rgba(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
 
@@ -105,16 +127,9 @@ function draw() {
     ctx.fillStyle = C.sub; ctx.fillText(`${pad(h)}:00`, Math.min(Math.max(X(t), x0 + 16), x1 - 16), y1 + 10);
   }
 
-  // 06:00 세로줄: 한국 야간선물 종료 (강조)
-  { const tx = S.start + 12 * 3600;
-    if (tx > S.start && tx < S.end) { const x = Math.round(X(tx)) + .5, OC = '#f08c00';
-      ctx.save(); ctx.strokeStyle = OC; ctx.lineWidth = 1.6; ctx.setLineDash([5, 3]);
-      ctx.beginPath(); ctx.moveTo(x, y0 - 4); ctx.lineTo(x, y1); ctx.stroke(); ctx.setLineDash([]);
-      ctx.font = `700 11px ${FONT}`; const lb = '한국 야간선물 종료', tw = ctx.measureText(lb).width + 14, th = 20;
-      const bx = Math.max(x0, x - tw - 6), by = y0 - th - 6;
-      ctx.fillStyle = OC; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, tw, th, 6) : ctx.rect(bx, by, tw, th); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(lb, bx + tw / 2, by + th / 2 + .5);
-      ctx.restore(); } }
+  // 23:30(서머타임 22:30) 미국 정규장 시작, 06:00 한국 야간선물 종료
+  markLine(ctx, X, usOpenAt(S.start), '미국 정규장 시작', '#7048e8', x0, y0, y1);
+  markLine(ctx, X, S.start + 12 * 3600, '한국 야간선물 종료', '#f08c00', x0, y0, y1);
   // 전일 종가 점선
   const yb = base != null ? Math.round(Y(base)) + .5 : null;
   if (yb != null) {
