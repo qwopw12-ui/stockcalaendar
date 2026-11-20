@@ -233,7 +233,7 @@ function buildCards(){
   grid.innerHTML = STOCKS.map(s => `
     <div class="card" id="c-${s.id}">
       <div class="head">
-        <div class="logo" style="--c:${s.color}"><img src="https://ssl.pstatic.net/imgstock/fn/real/logo/stock/Stock${s.code}.svg" alt="${s.name} 로고" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('fb');this.remove()"><span>${s.logo}</span></div>
+        <div class="logo" style="--c:${s.color}"><img src="logos/${s.code}.png" alt="${s.name} 로고" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('fb');this.remove()"><span>${s.logo}</span></div>
         <div class="name">${s.name} <span style="font-size:15px;color:var(--muted);font-weight:600">${s.code}</span></div>
       </div>
       <div class="src"><span class="dot stale"></span><span class="srcname">${s.src === 'bybit' ? 'Bybit' : 'Hyperliquid'}</span>해외 실시간 추정가</div>
@@ -361,7 +361,6 @@ const US = [
   { id:'spcx', name:'스페이스X', tk:'SPCX', coin:'xyz:SPCX', logo:'SX', color:'#000000', grid:'biggrid' },
   { id:'pltr', name:'팔란티어', tk:'PLTR', coin:'xyz:PLTR', logo:'PL', color:'#101113', grid:'biggrid' },
   { id:'orcl', name:'오라클', tk:'ORCL', lg:'ORCL.K', coin:'xyz:ORCL', logo:'OR', color:'#c74634', grid:'biggrid' },
-  { id:'sox',  name:'필라델피아반도체', tk:'SOX', api:'/api/sox', index:true, logo:'SOX', color:'#5b21b6', nologo:true, grid:'biggrid' },
 ];
 function nyParts(ms){
   const p = {}; new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23',weekday:'short'})
@@ -459,12 +458,6 @@ setInterval(() => { loadUsClose(); refreshUs(); }, REFRESH_SEC * 1000);
   try{ new MutationObserver(sync).observe(document.documentElement, {attributes:true, attributeFilter:['class']}); }catch(e){}
   window.addEventListener('resize', () => setTimeout(fit, 150)); sync(); fit(); setTimeout(()=>{sync();fit();},1500);
 })();
-// ===== 필라델피아 반도체지수 (Netlify 함수 /api/sox, 30초 캐시) =====
-async function refreshSox(){
-  const s = US.find(x => x.api); if (!s) return;
-  try{ const j = await (await fetch(s.api, { cache:'no-cache' })).json(); if (j.ok){ s.usd = j.price; s.close = j.prevClose; renderUs(s); } }catch(e){}
-}
-refreshSox(); setInterval(refreshSox, 30000);
 // ===== 야간선물 카드 (아래 차트 화면의 값을 그대로 표시) =====
 (function(){
   const g = document.getElementById('grid'); if (!g) return;
