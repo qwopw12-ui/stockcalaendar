@@ -72,24 +72,24 @@ h1{font-size:34px;font-weight:900;letter-spacing:-1px;margin:10px 0 4px}
  <div class="top"><div><div class="kick">K-ANT 롱숏 투표 <span class="live" id="live"><i></i>실시간</span></div>
  <h1 id="q">내일 국내증시, 롱? 숏?</h1><div class="meta" id="meta"></div></div></div>
  <div class="btns">
-  <button class="btn long" id="bL"><span class="ic">▲</span><span><b>롱</b><small>오른다 · 코스피 상승</small></span></button>
-  <button class="btn short" id="bS"><span class="ic">▼</span><span><b>숏</b><small>내린다 · 코스피 하락</small></span></button>
+  <button class="btn long" id="bL"><span class="ic">▲</span><span><b>롱</b><small>오른다 · 코스피200 상승</small></span></button>
+  <button class="btn short" id="bS"><span class="ic">▼</span><span><b>숏</b><small>내린다 · 코스피200 하락</small></span></button>
  </div>
  <div class="res"><div class="bar"><div class="l" id="pl" style="width:50%">50%</div><div class="s" id="ps" style="width:50%">50%</div></div>
  <div class="cnt"><span class="l" id="cl">롱 0명</span><span class="t" id="ct">총 0명 참여</span><span class="s" id="cs">숏 0명</span></div></div>
- <div class="note" id="note">한 사람당 한 표, 마감 전까지는 바꿀 수 있어요. 결과는 다음 거래일 코스피 종가로 판정해요.</div>
+ <div class="note" id="note">한 사람당 한 표, 마감 전까지는 바꿀 수 있어요. 결과는 대상일 코스피200 15:30 가격으로 판정해요.</div>
 </div>
-<div class="sec">지난 투표 결과 <small>대상일 코스피 종가가 전일보다 오르면 롱, 내리면 숏 승리</small></div>
+<div class="sec">지난 투표 결과 <small>대상일 15:30 코스피200 가격이 전일 15:30보다 오르면 롱, 내리면 숏 승리</small></div>
 <div class="card hist" id="hist"><div class="hempty">불러오는 중…</div></div>
-<div class="sec">코스피 <small>일봉 · 휠·드래그로 확대/이동</small></div>
+<div class="sec">코스피200 <small>일봉 · 한국 정규장 시간(09:00~15:30) · 휠·드래그로 확대/이동</small></div>
 <div class="card chart" id="kospi"></div>
-<div class="sec">나스닥 <small>일봉 · 미국 종합지수</small></div>
+<div class="sec">나스닥100 <small>일봉 · 미국 정규장 시간</small></div>
 <div class="card chart" id="nasdaq"></div>
 <div class="sec">삼성전자 <small>일봉 · 정방향 vs 거꾸로</small></div>
 <div class="grid2"><div class="card chart" id="sec"></div><div class="card chart flip" id="secf"></div></div>
 <div class="sec">SK하이닉스 <small>일봉 · 정방향 vs 거꾸로</small></div>
 <div class="grid2"><div class="card chart" id="hynix"></div><div class="card chart flip" id="hynixf"></div></div>
-<div class="foot">K-ANT 증시노트 · 투자 권유가 아니에요. 재미로 참여해 주세요.</div>
+<div class="foot">K-ANT 증시노트 · 투자 권유가 아니에요. 재미로 참여해 주세요.<br>차트·판정 가격은 한국거래소(KRX) 시세가 아닌 Hyperliquid 해외 거래소의 정규장 시간 가격이며, 원화 환산은 유럽중앙은행(ECB) 기준환율을 씁니다.</div>
 </div>
 <script>
 let C={};
@@ -110,7 +110,7 @@ const TG=target(),DAY=TG.day;
 let mySide=null,L=0,S=0,DAYK=null,OPEN=true;
 const VID=(()=>{try{let v=localStorage.getItem('lsvid');if(!v){v=[...crypto.getRandomValues(new Uint8Array(12))].map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,24);localStorage.setItem('lsvid',v)}return v}catch(e){return 'x'+Math.random().toString(36).slice(2).padEnd(20,'0')}})();
 const myKey=d=>'lsvote:'+d;
-const NOTE_OPEN='한 사람당 한 표, 마감 전까지는 바꿀 수 있어요. 결과는 대상일 코스피 종가(15:30)로 판정해요.';
+const NOTE_OPEN='한 사람당 한 표, 마감 전까지는 바꿀 수 있어요. 결과는 대상일 코스피200 15:30 가격으로 판정해요.';
 function drawVote(){const t=L+S,pl=t?Math.round(L/t*100):50,ps=t?100-pl:50;
  const a=document.getElementById('pl'),b=document.getElementById('ps');a.style.width=pl+'%';b.style.width=ps+'%';a.textContent=pl>=12?pl+'%':'';b.textContent=ps>=12?ps+'%':'';
  document.getElementById('cl').textContent=`롱 ${L.toLocaleString()}명`;document.getElementById('cs').textContent=`숏 ${S.toLocaleString()}명`;document.getElementById('ct').textContent=`총 ${t.toLocaleString()}명 참여`;
@@ -119,7 +119,7 @@ function drawVote(){const t=L+S,pl=t?Math.round(L/t*100):50,ps=t?100-pl:50;
 const W7='일월화수목금토',md=x=>{const d=new Date(Date.parse(x)+9*3600e3);return `${d.getUTCMonth()+1}/${d.getUTCDate()}(${W7[d.getUTCDay()]}) ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`};
 function setTarget(tg){const changed=tg.day!==DAYK;DAYK=tg.day;OPEN=!!tg.open;const t=new Date(tg.day+'T00:00:00Z');
  document.getElementById('q').textContent=`${t.getUTCMonth()+1}월 ${t.getUTCDate()}일(${W7[t.getUTCDay()]}) 국내증시, 롱? 숏?`;
- document.getElementById('meta').textContent=OPEN?`코스피 기준 · ${md(tg.deadline)} 투표 마감`:`투표 마감 · ${md(tg.judge)} 장 마감 후 승패 판정, 이어서 다음 거래일 투표 시작`;
+ document.getElementById('meta').textContent=OPEN?`코스피200 기준 · ${md(tg.deadline)} 투표 마감`:`투표 마감 · ${md(tg.judge)} 장 마감 후 승패 판정, 이어서 다음 거래일 투표 시작`;
  const lv=document.getElementById('live');lv.innerHTML=OPEN?'<i></i>실시간':'마감';lv.classList.toggle('off',!OPEN);
  if(!busy)document.getElementById('note').textContent=OPEN?NOTE_OPEN:'투표가 마감됐어요. 결과는 장 마감(15:30) 후 아래 지난 투표 결과에 정리돼요.';
  if(changed){try{mySide=localStorage.getItem(myKey(tg.day))}catch(e){mySide=null}if(typeof loadHist==='function'&&DAYK!==null)loadHist()}
@@ -137,11 +137,11 @@ setTarget(TG);
 document.getElementById('bL').onclick=()=>vote('long');document.getElementById('bS').onclick=()=>vote('short');
 load();setInterval(load,5000);document.addEventListener('visibilitychange',load);
 
-/* ---------- 지난 투표 결과 (서버: /api/vote?hist=1, 판정: 코스피 일봉 종가) ---------- */
+/* ---------- 지난 투표 결과 (서버: /api/vote?hist=1, 판정: 코스피200 정규장 마감(15:30) 가격) ---------- */
 let HIST=null;
 async function loadHist(){try{const j=await(await fetch('/api/vote?hist=1',{cache:'no-store'})).json();if(j.ok){HIST=j.hist||[];drawHist()}}catch(e){}}
-function drawHist(){const el=document.getElementById('hist');if(!HIST||!Array.isArray(C.KOSPI))return;
- const K=C.KOSPI,W='일월화수목금토',rows=[];let lw=0,sw=0,hit=0,dec=0;
+function drawHist(){const el=document.getElementById('hist');if(!HIST||!Array.isArray(C.KR200))return;
+ const K=C.KR200,W='일월화수목금토',rows=[];let lw=0,sw=0,hit=0,dec=0;
  for(const h of HIST.slice().sort((a,b)=>a.day<b.day?1:-1)){
   const k=h.day.replace(/-/g,''),i=K.findIndex(r=>r[0]===k),t=h.long+h.short;if(!t)continue;
   let res='w',cl=null,pct=null;
@@ -208,8 +208,8 @@ function chart(el,name,rows,dec,unit,flip){
  cv.addEventListener('touchend',()=>{tt=null;hx=null;draw()});
  const sync=()=>{el.querySelectorAll('.mal button').forEach(b=>b.classList.toggle('on',!!MAON[b.dataset.k]));draw()};CHARTS.push({sync});
  draw();addEventListener('resize',draw);new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['class']})}
-const SP=[['kospi','코스피','KOSPI',2,'',false],['nasdaq','나스닥','NASDAQ',2,'',false],['sec','삼성전자','005930',0,'원',false],['secf','삼성전자 거꾸로','005930',0,'원',true],['hynix','SK하이닉스','000660',0,'원',false],['hynixf','SK하이닉스 거꾸로','000660',0,'원',true]];
-(async()=>{await Promise.all(['KOSPI','NASDAQ','005930','000660'].map(async sym=>{try{C[sym]=await(await fetch('/api/candles?sym='+sym)).json()}catch(e){}}));drawHist();
+const SP=[['kospi','코스피200','KR200',2,'',false],['nasdaq','나스닥100','XYZ100',2,'',false],['sec','삼성전자','SMSN',0,'원',false],['secf','삼성전자 거꾸로','SMSN',0,'원',true],['hynix','SK하이닉스','SKHX',0,'원',false],['hynixf','SK하이닉스 거꾸로','SKHX',0,'원',true]];
+(async()=>{await Promise.all(['KR200','XYZ100','SMSN','SKHX'].map(async sym=>{try{C[sym]=await(await fetch('/api/hlbars?sym='+sym)).json()}catch(e){}}));drawHist();
  SP.forEach(([id,nm,sym,d,u,f])=>{if(Array.isArray(C[sym])&&C[sym].length>20)chart(document.getElementById(id),nm,C[sym],d,u,f);else document.getElementById(id).innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">차트를 불러오지 못했어요.</div>'});
  if(window.parent!==window)setTimeout(()=>parent.postMessage({lsH:document.documentElement.scrollHeight},'*'),300)})();
 // 사이트 다크모드 따라가기

@@ -114,11 +114,11 @@
   <div class="topbar">
     <div class="tops">
       <div class="fxbox"><span><span class="fxl">원/달러 </span>환율</span> <b id="fx">—</b></div>
-      <div class="fxbox ekbox">예상 코스피 <b id="ek">—</b><span class="ekc" id="ekc"></span></div>
+      <div class="fxbox ekbox">예상 코스피200 <b id="ek">—</b><span class="ekc" id="ekc"></span></div>
     </div>
     <span class="vw" id="vw" title="최근 5분 접속자 (구글 애널리틱스)"><span class="dot"></span><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 20.5c0-4.1 3.6-6.5 8-6.5s8 2.4 8 6.5c0 .6-.4 1-1 1H5c-.6 0-1-.4-1-1z"/></svg><b id="vwn"></b></span>
   </div>
-  <div class="sec-h" style="margin-top:0">한국 반도체 <small>KRX 종가 대비 · 원</small></div>
+  <div class="sec-h" style="margin-top:0">한국 반도체 <small>정규장 마감(15:30) 가격 대비 · 원</small></div>
   <div class="grid" id="grid"></div>
   <div class="sec-h">미국 반도체 <small>정규장 종가 대비 · 달러</small></div>
   <div class="grid" id="usgrid"></div>
@@ -134,8 +134,8 @@
     <p>- 추정가는 자체 알고리즘으로 산출되며 실제 시세와 차이가 날 수 있습니다.</p>
     <p>- 선물가격을 복제하기 위한 것이 아니라, 시장가격과의 차이를 분석하여 투자 판단에 참고를 하기 위한 지표입니다.</p>
     <p>- 투자에 따른 모든 책임은 사용자에게 있습니다.</p>
-    <p>- 실시간 가격은 한국거래소(KRX) 시세를 받아 쓰지 않으며, Hyperliquid·Bybit·Gate 등 해외 거래소에서 실제 거래된 가격을 사용합니다.</p>
-    <p>- 등락률 계산의 기준이 되는 전일 종가는 국내 정규장 종가를 참고합니다.</p>
+    <p>- 이 화면은 한국거래소(KRX) 시장데이터를 받거나 이용하지 않으며, 표시되는 가격은 KRX 시세나 그로부터 계산된 값이 아닙니다.</p>
+    <p>- 가격은 Hyperliquid·Bybit·Gate 등 해외 거래소에서 실제 거래된 가격이며, 등락률 기준은 한국 정규장 마감 시각(15:30)의 해외 거래소 가격이라 국내 종가와 다를 수 있습니다.</p>
     <p>- 공식 시세가 아니므로, 정확한 가격은 증권사 HTS·MTS 등 공식 채널에서 확인해 주세요.</p>
   </div>
 </div>
@@ -154,15 +154,14 @@ window.hlMeta = () => {
 };
 const REFRESH_SEC = 10;
 const FX_COIN = 'xyz:KRW';
-const CLOSE_API = '/api/krx-close';      // Netlify 함수: 네이버 KRX 종가
 const CLOSE_REFRESH_MIN = 10;
+// KRX 휴장일(평일) — 기준가(직전 정규장 15:30) 계산용
+const KHOL = ['2026-12-25','2026-12-31','2027-01-01','2027-02-08','2027-02-09','2027-03-01','2027-03-03'];
 
-// 기본값: 자동 조회가 안 될 때만 쓰는 비상용 값 (2026-11-17 KRX 종가)
+// 기준가: 직전 한국 정규장 마감(15:30) 시점의 Hyperliquid 가격(달러). 시가총액 = 상장주식수(DART 공시 기준) × 기준가 × 환율
 const STOCKS = [
-  { id:'samsung', code:'005930', name:'삼성전자', coin:'xyz:SMSN', logo:'S', color:'#1428a0',
-    defaults:{ refDate:'11/17', close:190300, marketCap:1112546819102400, low52:94500, high52:374500 } },
-  { id:'skhynix', code:'000660', name:'SK하이닉스', coin:'xyz:SKHX', logo:'SK', color:'#e3001b',
-    defaults:{ refDate:'11/17', close:1098000, marketCap:776065404114000, low52:501000, high52:2987000 } },
+  { id:'samsung', code:'005930', name:'삼성전자', coin:'xyz:SMSN', logo:'S', color:'#1428a0', shares:5846278608, defaults:{} },
+  { id:'skhynix', code:'000660', name:'SK하이닉스', coin:'xyz:SKHX', logo:'SK', color:'#e3001b', shares:706799093, defaults:{} },
 ];
 
 // 바이비트 → 실패 시 게이트에서 호가 중간가(USD) 조회
@@ -186,7 +185,7 @@ const store = {
   get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
   set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 };
-STOCKS.forEach(s => { s.manual = null; try{ localStorage.removeItem('kl_manual_'+s.id); }catch(e){} s.auto = store.get('kl_auto_'+s.id); s.last = null; });
+STOCKS.forEach(s => { s.manual = null; try{ localStorage.removeItem('kl_manual_'+s.id); }catch(e){} s.auto = store.get('kl_auto2_'+s.id); s.last = null; });
 
 // 우선순위: 같은 기준일에 직접 고친 값 > 자동 조회값 > 직접 입력값 > 비상용 기본값
 function cfgOf(s){
@@ -195,21 +194,29 @@ function cfgOf(s){
   return Object.assign({}, s.defaults, s.manual || {});
 }
 
+// 직전 한국 정규장 마감 시각(15:30 KST, 주말·휴장일 건너뜀) — UTC ms
+function lastKrClose(){
+  const KS = 9*3600e3, now = Date.now(), k = new Date(now + KS);
+  let d = Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate());
+  for (let i = 0; i < 15; i++, d -= 864e5) {
+    const day = new Date(d), w = day.getUTCDay(), iso = day.toISOString().slice(0,10), t = d + 15.5*3600e3 - KS;
+    if (w === 0 || w === 6 || KHOL.includes(iso) || t > now) continue;
+    return { t, label: `${day.getUTCMonth()+1}/${day.getUTCDate()} 15:30` };
+  }
+  return null;
+}
 async function loadClose(){
-  try{
-    const r = await fetch(CLOSE_API + '?codes=' + STOCKS.map(s => s.code).join(','), { cache:'no-cache' });
-    const j = await r.json();
-    (j.stocks || []).forEach(d => {
-      const s = STOCKS.find(x => x.code === d.code);
-      if (!s || !d.close || !d.date) return;
-      const a = { refDate: `${+d.date.slice(4,6)}/${+d.date.slice(6,8)}`, close: d.close };
-      if (d.marketCap) a.marketCap = d.marketCap;
-      if (d.low52) a.low52 = d.low52;
-      if (d.high52) a.high52 = d.high52;
-      s.auto = a; store.set('kl_auto_'+s.id, a);
+  const lc = lastKrClose(); if (!lc) return;
+  await Promise.all(STOCKS.map(async s => {
+    try{
+      const k = await (await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ type:'candleSnapshot', req:{ coin:s.coin, interval:'1m', startTime: lc.t - 15*60e3, endTime: lc.t } }) })).json();
+      const c = (Array.isArray(k) ? k : []).filter(x => x.t + 60e3 <= lc.t).pop();   // 15:29 봉 종가 = 15:30 가격
+      if (!c) return;
+      s.auto = { refDate: lc.label, closeUsd: +c.c }; store.set('kl_auto2_'+s.id, s.auto);
       render(s);
-    });
-  }catch(e){ console.warn('종가 자동 조회 실패 — 저장된 값/기본값 사용', e); }
+    }catch(e){}
+  }));
 }
 
 const won = n => Math.round(n).toLocaleString('ko-KR');
@@ -244,13 +251,13 @@ let fx = null, fxSource = '';
 function render(s){
   const card = document.getElementById('c-'+s.id);
   const cfg = cfgOf(s);
-  card.querySelector('.cap').textContent = fmtCap(cfg.marketCap);
-  card.querySelector('.chg .lbl').textContent = `${cfg.refDate} 종가 대비`;
-  if (s.usd == null || !fx) return;
+  if (cfg.refDate) card.querySelector('.chg .lbl').textContent = `${cfg.refDate} 대비`;
+  if (cfg.closeUsd && fx) card.querySelector('.cap').textContent = fmtCap(s.shares * cfg.closeUsd * fx);
+  if (s.usd == null || !fx || !cfg.closeUsd) return;
 
-  const krw = s.usd * fx;
-  const diff = krw - cfg.close;
-  const pct = diff / cfg.close * 100;
+  const krw = s.usd * fx, base = cfg.closeUsd * fx;
+  const diff = krw - base;
+  const pct = diff / base * 100;
   const cls = Math.abs(diff) < 0.5 ? 'flat' : diff > 0 ? 'up' : 'down';
   const arrow = cls==='up' ? '▲' : cls==='down' ? '▼' : '';
 
@@ -468,7 +475,7 @@ refreshSox(); setInterval(refreshSox, 30000);
         <div class="name">코스피200 야간선물 <span style="font-size:13px;color:var(--muted);font-weight:600">K-ANT 자체산출</span></div>
       </div>
       <div class="price"><span class="v">—</span><span class="u">pt</span></div>
-      <div class="chg"><span class="lbl">전일 종가 대비</span><span class="amt"></span><span class="sep">|</span><span class="pct"></span></div>
+      <div class="chg"><span class="lbl">15:30 대비</span><span class="amt"></span><span class="sep">|</span><span class="pct"></span></div>
       <div class="rows"><div class="row"><span>거래시간</span><span>18:00 ~ 익일 06:00</span></div></div>
     </div>`);
   const f = document.getElementById('nightFrame'); if (!f) return;
@@ -481,7 +488,7 @@ refreshSox(); setInterval(refreshSox, 30000);
       const val = parseFloat(m[1].replace(/,/g,'')), c = parseFloat(m[2]), r = parseFloat(m[3]);
       const card = document.getElementById('c-night'), v = card.querySelector('.price .v');
       if (last != null && val !== last){ v.classList.remove('flash-up','flash-down'); void v.offsetWidth; v.classList.add(val>last?'flash-up':'flash-down'); setTimeout(()=>v.classList.remove('flash-up','flash-down'),60); }
-      window.NIGHT_R = r;
+      window.NIGHT_R = r; window.NIGHT_V = val;
       last = val; v.textContent = val.toFixed(2);
       const cls = c > 0 ? 'up' : c < 0 ? 'down' : 'flat', arrow = cls==='up'?'▲':cls==='down'?'▼':'';
       const a = card.querySelector('.chg .amt'), p = card.querySelector('.chg .pct');
@@ -511,7 +518,7 @@ function sparkWindow(){
 }
 function sparkBase(coin){
   const s = STOCKS.find(x => x.coin === coin);
-  if (s){ const cfg = cfgOf(s); return (cfg.close && fx) ? cfg.close / fx : null; }   // 한국: KRX 종가(원) ÷ 환율
+  if (s){ const cfg = cfgOf(s); return cfg.closeUsd || null; }                       // 한국: 직전 15:30 가격(달러)
   const u = US.find(x => x.coin === coin); return u ? u.close || null : null;          // 미국: 정규장 종가
 }
 function sparkLast(coin){
@@ -562,23 +569,16 @@ try{ new MutationObserver(drawSparks).observe(document.documentElement, {attribu
 function moveChg(){ document.querySelectorAll('.card').forEach(c => { const h = c.querySelector('.head'), g = c.querySelector('.chg'); if (h && g && g.parentNode !== h) h.appendChild(g); }); }
 moveChg(); setTimeout(moveChg, 500); setTimeout(moveChg, 2000);
 try{ new MutationObserver(moveChg).observe(document.body, {childList:true, subtree:true}); }catch(e){}
-// ===== 예상 코스피 = 코스피 종가 × (1 + 야간선물 등락률), 10초마다 =====
-let KOSPI = null;
-async function loadKospi(){ try{ const j = await (await fetch('/api/kospi', { cache:'no-cache' })).json(); if (j.ok) KOSPI = j; }catch(e){} }
+// ===== 예상 코스피200 = 아래 K-ANT 야간 추정지수 값 (10초마다) =====
 function renderEk(){
-  const el = document.getElementById('ek'), ce = document.getElementById('ekc'); if (!el || !KOSPI || window.NIGHT_R == null) return;
-  const k = kstNow(), today = k.toISOString().slice(0,10), h = k.getUTCHours();
-  // 06:00~18:00에는 직전 야간장 등락률이 남아 있으므로, 그날 장이 끝났으면 전일 종가를 기준으로
-  const openH = today === '2026-11-19' ? 19 : 18;   // 수능일은 야간장 19:00 개장
-  const base = (h >= 6 && h < openH && KOSPI.date === today) ? KOSPI.prevClose : KOSPI.close;
-  const r = window.NIGHT_R, v = base * (1 + r/100), c = v - base;
+  const el = document.getElementById('ek'), ce = document.getElementById('ekc'); if (!el || window.NIGHT_V == null || window.NIGHT_R == null) return;
+  const v = window.NIGHT_V, r = window.NIGHT_R, c = v - v / (1 + r/100);
   el.textContent = v.toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2});
   const cls = c > 0 ? 'up' : c < 0 ? 'down' : '';
   ce.className = 'ekc ' + cls;
   ce.innerHTML = `<span>${c>0?'▲':c<0?'▼':''} ${Math.abs(c).toFixed(2)}</span><span>${r>0?'+':''}${r.toFixed(2)}%</span>`;
 }
-function kstNow(){ return new Date(Date.now() + 9*3600e3); }
-loadKospi().then(renderEk); setInterval(loadKospi, 600000); setInterval(renderEk, 10000); setTimeout(renderEk, 3000);
+setInterval(renderEk, 10000); setTimeout(renderEk, 3000);
 // 화면이 좁아져도 PC 화면 배치 그대로 — 폭이 1072px보다 작으면 전체를 같은 비율로 축소
 (function(){
   const D = 1072, wrap = document.querySelector('.wrap'), outer = document.createElement('div');
