@@ -135,7 +135,7 @@
     <p>- 선물가격을 복제하기 위한 것이 아니라, 시장가격과의 차이를 분석하여 투자 판단에 참고를 하기 위한 지표입니다.</p>
     <p>- 투자에 따른 모든 책임은 사용자에게 있습니다.</p>
     <p>- 이 화면은 한국거래소(KRX) 시장데이터를 받거나 이용하지 않으며, 표시되는 가격은 KRX 시세나 그로부터 계산된 값이 아닙니다.</p>
-    <p>- 가격은 Hyperliquid·Bybit·Gate 등 해외 거래소에서 실제 거래된 가격이며, 등락률 기준은 한국 정규장 마감 시각(15:30)의 해외 거래소 가격이라 국내 종가와 다를 수 있습니다.</p>
+    <p>- 가격은 Hyperliquid 해외 거래소에서 실제 거래된 가격이며, 등락률 기준은 한국 정규장 마감 시각(15:30)의 해외 거래소 가격이라 국내 종가와 다를 수 있습니다.</p>
     <p>- 공식 시세가 아니므로, 정확한 가격은 증권사 HTS·MTS 등 공식 채널에서 확인해 주세요.</p>
   </div>
 </div>
@@ -163,23 +163,6 @@ const STOCKS = [
   { id:'samsung', code:'005930', name:'삼성전자', coin:'xyz:SMSN', logo:'S', color:'#1428a0', shares:5846278608, defaults:{} },
   { id:'skhynix', code:'000660', name:'SK하이닉스', coin:'xyz:SKHX', logo:'SK', color:'#e3001b', shares:706799093, defaults:{} },
 ];
-
-// 바이비트 → 실패 시 게이트에서 호가 중간가(USD) 조회
-async function fetchCexMid(s){
-  try{
-    const r = await fetch(`https://api.bybit.com/v5/market/tickers?category=linear&symbol=${s.symbol}`);
-    const t = (await r.json()).result.list[0];
-    const bid = Number(t.bid1Price), ask = Number(t.ask1Price);
-    const px = bid > 0 && ask > 0 ? (bid + ask) / 2 : Number(t.markPrice || t.lastPrice);
-    if (px > 0) return { px, src:'Bybit' };
-  }catch(e){}
-  const r = await fetch(`https://api.gateio.ws/api/v4/futures/usdt/tickers?contract=${s.gateContract}`);
-  const t = (await r.json())[0];
-  const bid = Number(t.highest_bid), ask = Number(t.lowest_ask);
-  const px = bid > 0 && ask > 0 ? (bid + ask) / 2 : Number(t.mark_price || t.last);
-  if (px > 0) return { px, src:'Gate' };
-  throw new Error('no price');
-}
 
 const store = {
   get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
@@ -236,7 +219,7 @@ function buildCards(){
         <div class="logo" style="--c:${s.color}"><img src="logos/${s.code}.png" alt="${s.name} 로고" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('fb');this.remove()"><span>${s.logo}</span></div>
         <div class="name">${s.name} <span style="font-size:15px;color:var(--muted);font-weight:600">${s.code}</span></div>
       </div>
-      <div class="src"><span class="dot stale"></span><span class="srcname">${s.src === 'bybit' ? 'Bybit' : 'Hyperliquid'}</span>해외 실시간 추정가</div>
+      <div class="src"><span class="dot stale"></span><span class="srcname">Hyperliquid</span>해외 실시간 추정가</div>
       <div class="price"><span class="v">—</span><span class="u">원</span></div>
       <div class="chg"><span class="lbl"></span><span class="amt"></span><span class="sep">|</span><span class="pct"></span></div>
       <canvas class="spark" data-coin="${s.coin||''}"></canvas>
@@ -286,19 +269,6 @@ async function getFxFallback(){
   return j && j.rates && j.rates.KRW;
 }
 
-async function refreshCex(){
-  await Promise.all(STOCKS.filter(s => s.src).map(async s => {
-    try{
-      const { px, src } = await fetchCexMid(s);
-      s.usd = px;
-      document.querySelector(`#c-${s.id} .srcname`).textContent = src;
-      render(s);
-    }catch(e){
-      const d = document.querySelector(`#c-${s.id} .dot`); if (d) d.classList.add('stale');
-    }
-  }));
-}
-
 async function refresh(){
   const updated = document.getElementById('updated') || { set className(v){}, set textContent(v){} };
   try{
@@ -313,7 +283,6 @@ async function refresh(){
     else if (!fx) { const f = await getFxFallback().catch(()=>null); if (f) { fx = f; fxSource = '(open.er-api)'; } }
     document.getElementById('fx').textContent = fx ? fx.toLocaleString('ko-KR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '원' : '—';
 
-    refreshCex();   // 환율이 정해진 뒤 삼성전기(바이비트) 조회
     STOCKS.filter(s => !s.src).forEach(s => {
       const c = byName[s.coin];
       if (!c) return;
@@ -328,7 +297,6 @@ async function refresh(){
   }catch(e){
     updated.className = 'pill err';
     updated.textContent = '불러오기 실패 — 다음 갱신 때 재시도';
-    if (fx) refreshCex();
     document.querySelectorAll('.dot').forEach(d => d.classList.add('stale'));
     console.error(e);
   }
@@ -348,7 +316,7 @@ setInterval(() => {
 const US = [
   { id:'nvda', name:'엔비디아', tk:'NVDA', coin:'xyz:NVDA', logo:'NV', color:'#76b900' },
   { id:'amd',  name:'AMD',      tk:'AMD',  coin:'xyz:AMD',  logo:'AMD', color:'#000000' },
-  { id:'ant',  name:'앤트로픽', tk:'ANT', coin:'xyz:ANT', logo:'AN', color:'#d97757', nologo:true },
+  { id:'ant',  name:'앤트로픽', tk:'ANT', coin:'xyz:ANT', logo:'AN', color:'#d97757' },
   { id:'mu',   name:'마이크론', tk:'MU',   coin:'xyz:MU',   logo:'MU', color:'#0067b1' },
   { id:'sndk', name:'샌디스크', tk:'SNDK', coin:'xyz:SNDK', logo:'SD', color:'#c8102e' },
   { id:'intc', name:'인텔', tk:'INTC', coin:'xyz:INTC', logo:'IN', color:'#0068b5' },
