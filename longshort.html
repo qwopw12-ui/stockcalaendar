@@ -146,17 +146,14 @@ function chart(el,name,rows,dec,unit,flip){
   c.beginPath();c.rect(x0,y0-4,x1-x0,y1-y0+8);c.clip();
   MAS.forEach(([n,col],q)=>{if(!MAON[q])return;c.beginPath();let st2=false;for(let k=-1;k<=cnt;k++){const v=MA[q][b0+k];if(v==null)continue;st2?c.lineTo(X(k),Y(v)):(c.moveTo(X(k),Y(v)),st2=true)}c.strokeStyle=col;c.lineWidth=1.3;c.stroke()});
   c.restore();
-  if(hx!=null&&hx>=x0&&hx<=x1){const k=Math.min(cnt-1,Math.max(0,Math.floor((hx-x0)/st))),i=b0+k,x=rows[i];c.strokeStyle='#9aa1ab';c.setLineDash([3,3]);c.beginPath();c.moveTo(Math.round(X(k))+.5,y0);c.lineTo(Math.round(X(k))+.5,vy1);c.stroke();c.setLineDash([]);
-   const p=i?rows[i-1][4]:x[1],rr=(x[4]-p)/p*100,mas=MAS.map(([n,col],q)=>MAON[q]&&MA[q][i]!=null?`<span style="color:${col}">${n}일 ${fmt(MA[q][i],dec)}</span>`:'').filter(Boolean).join('<br>');
-   tip.innerHTML=`<b>${x[0].slice(0,4)}.${x[0].slice(4,6)}.${x[0].slice(6)}</b><br>시가 ${fmt(x[1],dec)}<br>고가 ${fmt(x[2],dec)}<br>저가 ${fmt(x[3],dec)}<br>종가 ${fmt(x[4],dec)} <span style="color:${rr>=0?'#ff8a8f':'#8fb4ff'}">${rr>=0?'+':''}${rr.toFixed(2)}%</span>${mas?'<br>'+mas:''}`;
-   tip.style.display='block';const tw=tip.offsetWidth;tip.style.left=(X(k)+12+tw>W?X(k)-tw-12:X(k)+12)+'px';tip.style.top='8px'}else tip.style.display='none'}
+  tip.style.display='none'}
  const zoom=(f,cx)=>{const {x0,x1}=G;const r0=cx==null?1:Math.max(0,Math.min(1,(cx-x0)/(x1-x0))),at=s0+cnt*r0;cnt=Math.round(cnt*f);clamp();s0=at-cnt*r0;clamp();draw()};
  el.querySelector('.zb').onclick=e=>{const z=e.target.dataset.z;if(z==='in')zoom(.7);else if(z==='out')zoom(1/.7);else if(z==='reset'){cnt=DEF;s0=N-DEF;clamp();draw()}};
  el.querySelector('.mal').onclick=e=>{const k=e.target.dataset.k;if(k==null)return;MAON[k]=MAON[k]?0:1;try{localStorage.setItem('lsma',JSON.stringify(MAON))}catch(_){}CHARTS.forEach(f=>f.sync())};
  cv.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY>0?1.15:1/1.15,e.offsetX)},{passive:false});
  let drag=null;
  cv.addEventListener('mousedown',e=>{drag={x:e.clientX,s:s0}});addEventListener('mouseup',()=>drag=null);
- cv.addEventListener('mousemove',e=>{if(drag){s0=drag.s-(e.clientX-drag.x)/G.st;clamp();}hx=e.offsetX;draw()});
+ cv.addEventListener('mousemove',e=>{if(drag){s0=drag.s-(e.clientX-drag.x)/G.st;clamp();draw()}});
  cv.addEventListener('mouseleave',()=>{hx=null;draw()});cv.addEventListener('dblclick',()=>{cnt=DEF;s0=N-DEF;clamp();draw()});
  let tt=null;
  cv.addEventListener('touchstart',e=>{const t=e.touches;if(t.length===2){tt={d:Math.abs(t[0].clientX-t[1].clientX),c:cnt,s:s0,m:(t[0].clientX+t[1].clientX)/2}}else tt={x:t[0].clientX,s:s0,hx:true}},{passive:true});
