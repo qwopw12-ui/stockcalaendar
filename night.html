@@ -35,15 +35,15 @@
 <div class="wrap">
   <div class="card" id="card">
     <div id="chart"></div>
-    <div class="head"><div class="name">KOSPI200 야간 추정지수 <span style="font-weight:500;opacity:.8">· 칸트 자체 산출</span></div><div class="px" id="px">--</div></div>
+    <div class="head"><div class="name">KOSPI200 야간 추정지수 <span style="font-weight:500;opacity:.8">· K-ANT 자체산출</span></div><div class="px" id="px">--</div></div>
     <div class="tag" id="tag">연결 중…</div>
     <div class="overlay" id="overlay"><div><b id="ovHead">⏳ 불러오는 중</b><span id="ovMsg"></span></div></div>
   </div>
 </div>
 
 <script>
-// 데이터: Hyperliquid xyz 퍼페추얼(EWY·XYZ100·KR200) — 칸트 야간 추정지수, 3초마다 갱신 (실제 야간선물 시세 아님)
-// 기준선/색: 15:45 기준값 — 위는 빨강, 아래는 파랑. 차트는 외부 라이브러리 없이 캔버스로 직접 그림
+// 데이터: Hyperliquid xyz 퍼페추얼(EWY·XYZ100·KR200) — K-ANT 야간 추정지수, 3초마다 갱신 (실제 야간선물 시세 아님)
+// 기준선/색: 전일(주간장) 종가 — 위는 빨강, 아래는 파랑. 차트는 외부 라이브러리 없이 캔버스로 직접 그림
 const KST = 9 * 3600;
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, '0');
@@ -170,7 +170,7 @@ function draw() {
     const near = ys.filter((_, i) => xs[i] > x1 - 150);
     const above = !near.length || Math.min(...near) > yb - 16;
     ctx.textBaseline = above ? 'bottom' : 'top';
-    ctx.fillText('기준(15:45) ' + f2(base), x1 - 4, above ? yb - 4 : yb + 4);
+    ctx.fillText('전일 종가 ' + f2(base), x1 - 4, above ? yb - 4 : yb + 4);
   }
 
   // 현재가 점 + 라벨
@@ -214,9 +214,9 @@ function overlay(show, head = '', msg = '') {
   $('overlay').style.display = show ? 'flex' : 'none'; $('ovHead').textContent = head; $('ovMsg').textContent = msg;
 }
 
-// ===== 칸트 야간 추정지수 =====
-// 추정 = 기준값 × exp(β₁·ln(EWY/EWY₀) + β₂·ln(NDX/NDX₀)), 0.05 단위 반올림
-// 기준 시각: 가장 최근 평일 15:45(주간장 마감). 기준값 = 그 시각 Hyperliquid KR200
+// ===== K-ANT 야간 추정지수 =====
+// 추정 = 주간 종가 × exp(β₁·ln(EWY/EWY₀) + β₂·ln(NDX/NDX₀)), 0.05 단위 반올림
+// 기준 시각: 가장 최근 평일 15:45(주간장 마감). EWY₀·NDX₀ = 그 시각 값, 주간 종가 = 네이버 선물 일봉
 const API = 'https://api.hyperliquid.xyz/info', B_E = 0.96, B_N = 0.11, MIN = 60;
 const post = b => fetch(API, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(b) }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
 const tick = x => Math.round(x / 0.05) * 0.05;
@@ -240,7 +240,14 @@ async function init() {
   const [E, N, K] = await Promise.all(['xyz:EWY', 'xyz:XYZ100', 'xyz:KR200'].map(c => candles(c, REF - 30 * MIN, to)));
   ref = { e: priceAt(E, REF), n: priceAt(N, REF), k: priceAt(K, REF) };
   if (!ref.e || !ref.n || !ref.k) throw new Error('기준 시각(15:45) 시세 없음');
-  S = { start, kEnd, end: kEnd + 3600, base: ref.k, points: [], live: false };   // 축은 06:59까지(데이터는 06:00까지)
+  // 기준값: 코스피200 선물 실제 주간 종가(네이버). 못 받으면 15:45 KR200으로 대신
+  let base = ref.k;
+  try {
+    const ymd = new Date((REF + KST) * 1000).toISOString().slice(0, 10).replace(/-/g, '');
+    const j = await (await fetch('/api/fut-close?d=' + ymd)).json();
+    if (j.close > 0 && j.date === ymd) base = j.close;
+  } catch (e) {}
+  S = { start, kEnd, end: kEnd + 3600, base, points: [], live: false };   // 축은 06:59까지(데이터는 06:00까지)
   for (const [t, v] of E) { if (t < start || t > to) continue; const n = priceAt(N, t); if (n) S.points.push([t, est(v, n)]); }
 }
 
