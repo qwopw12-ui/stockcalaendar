@@ -232,15 +232,16 @@ async function candles(coin, from, to) {
   return Array.isArray(d) ? d.map(k => [k.t / 1000 + MIN, +k.c]) : [];   // 봉 마감 시각 기준
 }
 function priceAt(arr, t) { let p = null; for (const [x, v] of arr) { if (x <= t) p = v; else break; } return p; }
-let REF = null, ref = {}, busy = false;
+let REF = null, ref = {}, busy = false, failAt = 0;
 const est = (e, n) => tick(S.base * Math.exp(B_E * Math.log(e / ref.e) + B_N * Math.log(n / ref.n)));
 
 async function init() {
-  const now = Date.now() / 1000; REF = refTime(now);
-  const start = REF + 150 * MIN, kEnd = REF + (14 * 60 + 30) * MIN, to = Math.min(now, kEnd);
-  const [E, N, K] = await Promise.all(['xyz:EWY', 'xyz:XYZ100', 'xyz:KR200'].map(c => candles(c, REF - 30 * MIN, to)));
-  ref = { e: priceAt(E, REF), n: priceAt(N, REF), k: priceAt(K, REF) };
-  if (!ref.e || !ref.n || !ref.k) throw new Error('기준 시각(15:30) 시세 없음');
+  const now = Date.now() / 1000, R = refTime(now);
+  const start = R + 150 * MIN, kEnd = R + (14 * 60 + 30) * MIN, to = Math.min(now, kEnd);
+  const [E, N, K] = await Promise.all(['xyz:EWY', 'xyz:XYZ100', 'xyz:KR200'].map(c => candles(c, R - 30 * MIN, to)));
+  const rf = { e: priceAt(E, R), n: priceAt(N, R), k: priceAt(K, R) };
+  if (!rf.e || !rf.n || !rf.k) throw new Error('기준 시각(15:30) 시세를 아직 못 받았어요');
+  ref = rf; REF = R;   // 성공했을 때만 기준 확정 (실패하면 다음 3초 뒤 다시 시도)
   const base = ref.k;   // 기준값: 정규장 마감(15:30) 시점 Hyperliquid KR200
   S = { start, kEnd, end: kEnd + 3600, base, points: [], live: false };   // 축은 06:59까지(데이터는 06:00까지)
   for (const [t, v] of E) { if (t < start || t > to) continue; const n = priceAt(N, t); if (n) S.points.push([t, est(v, n)]); }
@@ -250,7 +251,11 @@ async function poll() {
   if (busy) return; busy = true;
   try {
     const now = Date.now() / 1000;
-    if (REF == null || refTime(now) !== REF) await init();
+    if (!S || REF == null || refTime(now) !== REF) {
+      if (Date.now() - failAt < 15000) { busy = false; return; }   // 실패 직후엔 15초 쉬고 다시
+      try { await init(); } catch (e) { failAt = Date.now(); throw e; }
+    }
+    if (!S) return;
     const m = await post({ type:'allMids', dex:'xyz' });
     const e = +m['xyz:EWY'], n = +m['xyz:XYZ100'], t = Date.now() / 1000;
     const y = est(e, n), open = t >= S.start && t <= S.kEnd;
@@ -271,7 +276,7 @@ async function poll() {
     setTag(open ? '● 실시간 · 3초' : '장 종료', open ? 'live' : '');
   } catch (err) {
     setTag('⚠ 연결 오류 — 재시도 중', 'error');
-    if (!S) overlay(true, '⚠ 데이터 오류', String(err.message || err));
+    if (!S) overlay(true, '⏳ 다시 연결하는 중', '잠시 후 자동으로 다시 불러와요');
   } finally { busy = false; }
 }
 poll();
