@@ -12,7 +12,7 @@ html.kdark .long{background:#3a2629}html.kdark .short{background:#232c3d}html.kd
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .kick{font-size:14px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:8px}
 .live{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#1a9b4b}
-.live i{width:8px;height:8px;border-radius:50%;background:#1a9b4b;animation:p 1.8s infinite}
+.live.off{color:var(--muted)}.live i{width:8px;height:8px;border-radius:50%;background:#1a9b4b;animation:p 1.8s infinite}
 @keyframes p{0%{box-shadow:0 0 0 0 rgba(26,155,75,.45)}70%{box-shadow:0 0 0 7px rgba(26,155,75,0)}100%{box-shadow:0 0 0 0 rgba(26,155,75,0)}}
 h1{font-size:34px;font-weight:900;letter-spacing:-1px;margin:10px 0 4px}
 .meta{font-size:14px;color:var(--muted);font-weight:600}
@@ -51,6 +51,21 @@ h1{font-size:34px;font-weight:900;letter-spacing:-1px;margin:10px 0 4px}
 .flip .ch .nm.t:after{content:"위아래 뒤집음";margin-left:8px;font-size:11.5px;font-weight:800;color:#fff;background:#7048e8;border-radius:6px;padding:3px 7px;vertical-align:2px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 
+.hist{padding:12px 16px}
+.hsum{display:flex;gap:14px;flex-wrap:wrap;align-items:baseline;font-size:12.5px;color:var(--muted);font-weight:700;padding:0 2px 6px}
+.hsum b{font-size:14px;font-weight:900;margin-left:4px;color:var(--ink)}.hsum b.up{color:var(--up)}.hsum b.down{color:var(--down)}
+.hlist{max-height:178px;overflow-y:auto}
+.hrow{display:grid;grid-template-columns:62px 1fr 128px 70px;align-items:center;gap:10px;padding:5px 2px;border-top:1px solid var(--line);font-size:12.5px}
+.hd{font-weight:800}.hd small{color:var(--muted);font-weight:600;margin-left:2px}
+.hb{display:flex;height:15px;border-radius:5px;overflow:hidden;background:var(--line);font-size:10.5px;font-weight:800;color:#fff}
+.hb div{display:flex;align-items:center;white-space:nowrap;min-width:0}
+.hb .l{background:var(--up);padding-left:5px}.hb .s{background:var(--down);justify-content:flex-end;padding-right:5px}
+.hn{font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap}
+.hm{display:flex;align-items:center;gap:8px}.hm .hb{flex:1}
+.hk{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}.hk span{font-size:11.5px;margin-left:5px}
+.win{justify-self:center;font-size:11.5px;font-weight:900;border-radius:999px;padding:2px 8px;color:#fff;white-space:nowrap}
+.win.l{background:var(--up)}.win.s{background:var(--down)}.win.d,.win.w{background:var(--line);color:var(--muted)}
+.hempty{padding:14px;text-align:center;color:var(--muted);font-size:13px}
 .foot{margin-top:24px;font-size:12px;color:var(--muted);text-align:center}
 </style></head><body><div class="wrap">
 <div class="card vote">
@@ -64,6 +79,8 @@ h1{font-size:34px;font-weight:900;letter-spacing:-1px;margin:10px 0 4px}
  <div class="cnt"><span class="l" id="cl">롱 0명</span><span class="t" id="ct">총 0명 참여</span><span class="s" id="cs">숏 0명</span></div></div>
  <div class="note" id="note">한 사람당 한 표, 마감 전까지는 바꿀 수 있어요. 결과는 다음 거래일 코스피 종가로 판정해요.</div>
 </div>
+<div class="sec">지난 투표 결과 <small>대상일 코스피 종가가 전일보다 오르면 롱, 내리면 숏 승리</small></div>
+<div class="card hist" id="hist"><div class="hempty">불러오는 중…</div></div>
 <div class="sec">코스피 <small>일봉 · 휠·드래그로 확대/이동</small></div>
 <div class="card chart" id="kospi"></div>
 <div class="sec">나스닥 <small>일봉 · 미국 종합지수</small></div>
@@ -83,35 +100,64 @@ const HOL=['2026-12-25','2026-12-31','2027-01-01','2027-02-08','2027-02-09','202
 const kst=()=>new Date(Date.now()+9*3600e3);
 const ymd=d=>`${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
 const isTD=d=>{const w=d.getUTCDay();return w>0&&w<6&&!HOL.includes(ymd(d))};
-// 투표 대상: 마감(대상 거래일 바로 앞 거래일 23:30)이 아직 안 지난 가장 가까운 거래일
-function target(){const now=kst();let t=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()));
- for(;;){t=new Date(t.getTime()+864e5);if(!isTD(t))continue;let p=new Date(t.getTime()-864e5);while(!isTD(p))p=new Date(p.getTime()-864e5);if(now<new Date(p.getTime()+23.5*3600e3))return t}}
-const T=target(),DAY=ymd(T),DW='일월화수목금토'[T.getUTCDay()];
-document.getElementById('q').textContent=`${T.getUTCMonth()+1}월 ${T.getUTCDate()}일(${DW}) 국내증시, 롱? 숏?`;
-let DL=new Date(T.getTime()-864e5);while(!isTD(DL))DL=new Date(DL.getTime()-864e5);document.getElementById('meta').textContent=`코스피 기준 · ${DL.getUTCMonth()+1}/${DL.getUTCDate()}(${'일월화수목금토'[DL.getUTCDay()]}) 23:30 마감`;
+// 일정: 대상 거래일 T의 투표는 바로 앞 거래일 15:30~23:30. 마감 후 T 15:30(장 마감)까지 결과 대기, 이후 다음 거래일 투표 시작
+function target(){const k=kst(),today=new Date(Date.UTC(k.getUTCFullYear(),k.getUTCMonth(),k.getUTCDate()));let t=new Date(today.getTime()-864e5);
+ for(;;){t=new Date(t.getTime()+864e5);if(!isTD(t))continue;const judge=t.getTime()+15.5*3600e3;if(k.getTime()>=judge)continue;
+  let p=new Date(t.getTime()-864e5);while(!isTD(p))p=new Date(p.getTime()-864e5);const op=p.getTime()+15.5*3600e3,dl=p.getTime()+23.5*3600e3;
+  const iso=x=>new Date(x-9*3600e3).toISOString();return{day:ymd(t),open:k.getTime()>=op&&k.getTime()<dl,deadline:iso(dl),judge:iso(judge)}}}
+const TG=target(),DAY=TG.day;
 /* ---------- 투표 (서버: /api/vote) ---------- */
-let mySide=null,L=0,S=0,DAYK=DAY;
+let mySide=null,L=0,S=0,DAYK=null,OPEN=true;
 const VID=(()=>{try{let v=localStorage.getItem('lsvid');if(!v){v=[...crypto.getRandomValues(new Uint8Array(12))].map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,24);localStorage.setItem('lsvid',v)}return v}catch(e){return 'x'+Math.random().toString(36).slice(2).padEnd(20,'0')}})();
 const myKey=d=>'lsvote:'+d;
-try{mySide=localStorage.getItem(myKey(DAYK))}catch(e){}
+const NOTE_OPEN='한 사람당 한 표, 마감 전까지는 바꿀 수 있어요. 결과는 대상일 코스피 종가(15:30)로 판정해요.';
 function drawVote(){const t=L+S,pl=t?Math.round(L/t*100):50,ps=t?100-pl:50;
  const a=document.getElementById('pl'),b=document.getElementById('ps');a.style.width=pl+'%';b.style.width=ps+'%';a.textContent=pl>=12?pl+'%':'';b.textContent=ps>=12?ps+'%':'';
  document.getElementById('cl').textContent=`롱 ${L.toLocaleString()}명`;document.getElementById('cs').textContent=`숏 ${S.toLocaleString()}명`;document.getElementById('ct').textContent=`총 ${t.toLocaleString()}명 참여`;
- document.getElementById('bL').classList.toggle('sel',mySide==='long');document.getElementById('bS').classList.toggle('sel',mySide==='short')}
-function setTarget(day,deadline){if(day===DAYK)return;DAYK=day;const t=new Date(day+'T00:00:00Z'),dl=new Date(Date.parse(deadline)+9*3600e3),w='일월화수목금토';
- document.getElementById('q').textContent=`${t.getUTCMonth()+1}월 ${t.getUTCDate()}일(${w[t.getUTCDay()]}) 국내증시, 롱? 숏?`;
- document.getElementById('meta').textContent=`코스피 기준 · ${dl.getUTCMonth()+1}/${dl.getUTCDate()}(${w[dl.getUTCDay()]}) ${String(dl.getUTCHours()).padStart(2,'0')}:${String(dl.getUTCMinutes()).padStart(2,'0')} 마감`;
- try{mySide=localStorage.getItem(myKey(day))}catch(e){mySide=null}}
+ document.getElementById('bL').classList.toggle('sel',mySide==='long');document.getElementById('bS').classList.toggle('sel',mySide==='short');
+ document.getElementById('bL').disabled=document.getElementById('bS').disabled=!OPEN}
+const W7='일월화수목금토',md=x=>{const d=new Date(Date.parse(x)+9*3600e3);return `${d.getUTCMonth()+1}/${d.getUTCDate()}(${W7[d.getUTCDay()]}) ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`};
+function setTarget(tg){const changed=tg.day!==DAYK;DAYK=tg.day;OPEN=!!tg.open;const t=new Date(tg.day+'T00:00:00Z');
+ document.getElementById('q').textContent=`${t.getUTCMonth()+1}월 ${t.getUTCDate()}일(${W7[t.getUTCDay()]}) 국내증시, 롱? 숏?`;
+ document.getElementById('meta').textContent=OPEN?`코스피 기준 · ${md(tg.deadline)} 투표 마감`:`투표 마감 · ${md(tg.judge)} 장 마감 후 승패 판정, 이어서 다음 거래일 투표 시작`;
+ const lv=document.getElementById('live');lv.innerHTML=OPEN?'<i></i>실시간':'마감';lv.classList.toggle('off',!OPEN);
+ if(!busy)document.getElementById('note').textContent=OPEN?NOTE_OPEN:'투표가 마감됐어요. 결과는 장 마감(15:30) 후 아래 지난 투표 결과에 정리돼요.';
+ if(changed){try{mySide=localStorage.getItem(myKey(tg.day))}catch(e){mySide=null}if(typeof loadHist==='function'&&DAYK!==null)loadHist()}
+ drawVote()}
 let busy=false,pend=0;
-async function load(){if(document.hidden||Date.now()<pend)return;try{const j=await(await fetch('/api/vote',{cache:'no-store'})).json();if(j.ok){setTarget(j.day,j.deadline);L=j.long;S=j.short;drawVote();document.getElementById('live').style.display=''}}catch(e){document.getElementById('live').style.display='none'}}
-async function vote(side){if(busy||side===mySide)return;busy=true;const prev=mySide;
+async function load(){if(document.hidden||Date.now()<pend)return;try{const j=await(await fetch('/api/vote',{cache:'no-store'})).json();if(j.ok){L=j.long;S=j.short;setTarget(j)}}catch(e){setTarget(target())}}
+async function vote(side){if(busy||!OPEN||side===mySide)return;busy=true;const prev=mySide;
  if(prev==='long')L--;if(prev==='short')S--;side==='long'?L++:S++;mySide=side;drawVote();pend=Date.now()+4000;
  try{const r=await fetch('/api/vote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({side,vid:VID})});const j=await r.json();
-  if(!j.ok)throw new Error(j.error||r.status);try{localStorage.setItem(myKey(j.day),side)}catch(e){}document.getElementById('note').textContent='한 사람당 한 표, 마감 전까지는 바꿀 수 있어요. 결과는 다음 거래일 코스피 종가로 판정해요.'}
- catch(e){if(side==='long')L--;else S--;if(prev==='long')L++;if(prev==='short')S++;mySide=prev;drawVote();document.getElementById('note').textContent=String(e.message)==='too many'?'같은 인터넷 주소에서 투표가 너무 많아요. 잠시 후 다시 해주세요.':'투표가 저장되지 않았어요. 잠시 후 다시 눌러 주세요.'}
+  if(!j.ok)throw new Error(j.error||r.status);try{localStorage.setItem(myKey(j.day),side)}catch(e){}document.getElementById('note').textContent=NOTE_OPEN}
+ catch(e){if(side==='long')L--;else S--;if(prev==='long')L++;if(prev==='short')S++;mySide=prev;drawVote();const m=String(e.message);
+  document.getElementById('note').textContent=m==='too many'?'같은 인터넷 주소에서 투표가 너무 많아요. 잠시 후 다시 해주세요.':m==='closed'?'투표가 마감됐어요.':'투표가 저장되지 않았어요. 잠시 후 다시 눌러주세요.';if(m==='closed'){pend=0;load()}}
  busy=false}
+setTarget(TG);
 document.getElementById('bL').onclick=()=>vote('long');document.getElementById('bS').onclick=()=>vote('short');
-drawVote();load();setInterval(load,5000);document.addEventListener('visibilitychange',load);
+load();setInterval(load,5000);document.addEventListener('visibilitychange',load);
+
+/* ---------- 지난 투표 결과 (서버: /api/vote?hist=1, 판정: 코스피 일봉 종가) ---------- */
+let HIST=null;
+async function loadHist(){try{const j=await(await fetch('/api/vote?hist=1',{cache:'no-store'})).json();if(j.ok){HIST=j.hist||[];drawHist()}}catch(e){}}
+function drawHist(){const el=document.getElementById('hist');if(!HIST||!Array.isArray(C.KOSPI))return;
+ const K=C.KOSPI,W='일월화수목금토',rows=[];let lw=0,sw=0,hit=0,dec=0;
+ for(const h of HIST.slice().sort((a,b)=>a.day<b.day?1:-1)){
+  const k=h.day.replace(/-/g,''),i=K.findIndex(r=>r[0]===k),t=h.long+h.short;if(!t)continue;
+  let res='w',cl=null,pct=null;
+  const kd=kst(),tdy=ymd(new Date(Date.UTC(kd.getUTCFullYear(),kd.getUTCMonth(),kd.getUTCDate()))),early=h.day===tdy&&kd.getUTCHours()*60+kd.getUTCMinutes()<15*60+40;
+  if(i>0&&!early){cl=K[i][4];pct=(cl/K[i-1][4]-1)*100;res=pct>0?'l':pct<0?'s':'d'}
+  const pl=Math.round(h.long/t*100),ps=100-pl,maj=h.long>h.short?'l':h.long<h.short?'s':null;
+  if(res==='l')lw++;if(res==='s')sw++;
+  if((res==='l'||res==='s')&&maj){dec++;if(maj===res)hit++}
+  const d=new Date(h.day+'T00:00:00Z'),cls=pct==null?'':pct>0?'up':pct<0?'down':'';
+  rows.push(`<div class="hrow"><div class="hd">${d.getUTCMonth()+1}/${d.getUTCDate()}<small>(${W[d.getUTCDay()]})</small></div>
+   <div class="hm"><div class="hb"><div class="l" style="width:${pl}%">${pl>=18?pl+'%':''}</div><div class="s" style="width:${ps}%">${ps>=18?ps+'%':''}</div></div><span class="hn">${t.toLocaleString()}명</span></div>
+   <div class="hk ${cls}">${cl==null?'—':fmt(cl,2)}<span>${pct==null?'마감 전':(pct>0?'+':'')+pct.toFixed(2)+'%'}</span></div>
+   <div class="win ${res}">${{l:'롱 승리',s:'숏 승리',d:'무승부',w:'판정 대기'}[res]}</div></div>`)}
+ if(!rows.length){el.innerHTML='<div class="hempty">아직 판정된 투표가 없어요. 첫 결과는 다음 거래일 장 마감 후에 표시돼요.</div>';return}
+ el.innerHTML=`<div class="hsum"><span>롱 승리<b class="up">${lw}회</b></span><span>숏 승리<b class="down">${sw}회</b></span><span>다수 의견 적중률<b>${dec?Math.round(hit/dec*100)+'%':'—'}</b></span></div><div class="hlist">${rows.join('')}</div>`}
+loadHist();setInterval(loadHist,600000);
 /* ---------- 캔들 차트 (확대·축소·이동, 이동평균 5·10·20·60·120) ---------- */
 const MAS=[[5,'#f59f00'],[10,'#12b886'],[20,'#7048e8'],[60,'#e64980'],[120,'#868e96']];
 let MAON=(()=>{try{return JSON.parse(localStorage.getItem('lsma'))||[1,1,1,1,1]}catch(e){return [1,1,1,1,1]}})();
@@ -163,7 +209,7 @@ function chart(el,name,rows,dec,unit,flip){
  const sync=()=>{el.querySelectorAll('.mal button').forEach(b=>b.classList.toggle('on',!!MAON[b.dataset.k]));draw()};CHARTS.push({sync});
  draw();addEventListener('resize',draw);new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['class']})}
 const SP=[['kospi','코스피','KOSPI',2,'',false],['nasdaq','나스닥','NASDAQ',2,'',false],['sec','삼성전자','005930',0,'원',false],['secf','삼성전자 거꾸로','005930',0,'원',true],['hynix','SK하이닉스','000660',0,'원',false],['hynixf','SK하이닉스 거꾸로','000660',0,'원',true]];
-(async()=>{await Promise.all(['KOSPI','NASDAQ','005930','000660'].map(async sym=>{try{C[sym]=await(await fetch('/api/candles?sym='+sym)).json()}catch(e){}}));
+(async()=>{await Promise.all(['KOSPI','NASDAQ','005930','000660'].map(async sym=>{try{C[sym]=await(await fetch('/api/candles?sym='+sym)).json()}catch(e){}}));drawHist();
  SP.forEach(([id,nm,sym,d,u,f])=>{if(Array.isArray(C[sym])&&C[sym].length>20)chart(document.getElementById(id),nm,C[sym],d,u,f);else document.getElementById(id).innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">차트를 불러오지 못했어요.</div>'});
  if(window.parent!==window)setTimeout(()=>parent.postMessage({lsH:document.documentElement.scrollHeight},'*'),300)})();
 // 사이트 다크모드 따라가기

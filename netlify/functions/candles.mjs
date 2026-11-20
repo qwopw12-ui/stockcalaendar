@@ -11,14 +11,20 @@ async function nasdaq() {
   const j = await (await fetch(`https://api.stock.naver.com/chart/foreign/index/.IXIC/day?startDateTime=${f(s)}&endDateTime=${f(new Date(d.getTime() + 864e5))}`, { headers: UA })).json();
   return j.map(x => [x.localDate, +x.openPrice, +x.highPrice, +x.lowPrice, +x.closePrice, +x.accumulatedTradingVolume || 0]);
 }
+// 15:20~16:30(KST)엔 종가 확정·롱숏 판정 때문에 짧게, 그 외엔 30분 캐시
+function cacheHdr() {
+  const k = new Date(Date.now() + 9 * 3600e3), m = k.getUTCHours() * 60 + k.getUTCMinutes();
+  const near = m >= 15 * 60 + 20 && m <= 16 * 60 + 30;
+  return near ? { "Cache-Control": "public, max-age=60", "Netlify-CDN-Cache-Control": "public, s-maxage=120" }
+              : { "Cache-Control": "public, max-age=300", "Netlify-CDN-Cache-Control": "public, durable, s-maxage=1800, stale-while-revalidate=3600" };
+}
 export default async (req) => {
   const sym = new URL(req.url).searchParams.get("sym") || "KOSPI";
   if (!DOM.has(sym) && sym !== "NASDAQ") return new Response("{}", { status: 400 });
   try {
     const rows = (sym === "NASDAQ" ? await nasdaq() : await domestic(sym)).filter(x => x[4] > 0).slice(-400);
     if (rows.length < 20) throw new Error("short");
-    return new Response(JSON.stringify(rows), { headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=300",
-      "Netlify-CDN-Cache-Control": "public, durable, s-maxage=1800, stale-while-revalidate=3600" } });
+    return new Response(JSON.stringify(rows), { headers: { "Content-Type": "application/json; charset=utf-8", ...cacheHdr() } });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e.message || e) }), { status: 502, headers: { "Cache-Control": "no-store" } });
   }
