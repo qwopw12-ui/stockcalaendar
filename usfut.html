@@ -54,12 +54,12 @@ const FONT = '"Pretendard","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
 function markLine(ctx, X, tx, lb, col, x0, y0, y1) {
   if (!(tx > S.start && tx < S.end)) return;
   const x = Math.round(X(tx)) + .5;
-  ctx.save(); ctx.strokeStyle = rgba(col, .5); ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]);
+  ctx.save(); ctx.strokeStyle = rgba(col, .8); ctx.lineWidth = 1.5; ctx.setLineDash([5, 3]);
   ctx.beginPath(); ctx.moveTo(x, y0 - 4); ctx.lineTo(x, y1); ctx.stroke(); ctx.setLineDash([]);
-  ctx.font = `600 11px ${FONT}`; const tw = ctx.measureText(lb).width + 14, th = 20;
+  ctx.font = `700 11.5px ${FONT}`; const tw = ctx.measureText(lb).width + 14, th = 20;
   const bx = Math.max(x0, x - tw - 6), by = y0 - th - 6;
-  ctx.fillStyle = rgba(col, .12); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, tw, th, 6) : ctx.rect(bx, by, tw, th); ctx.fill();
-  ctx.fillStyle = rgba(col, .85); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(lb, bx + tw / 2, by + th / 2 + .5);
+  ctx.fillStyle = rgba(col, .2); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, tw, th, 6) : ctx.rect(bx, by, tw, th); ctx.fill();
+  ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(lb, bx + tw / 2, by + th / 2 + .5);
   ctx.restore();
 }
 // 미국 정규장 시작: 밤 구간이 시작한 날(한국 날짜)의 뉴욕 09:30 → 서머타임이면 22:30, 아니면 23:30 (한국시간)
