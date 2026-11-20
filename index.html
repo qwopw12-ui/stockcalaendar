@@ -371,6 +371,10 @@ body.vnight main,body.vnight .tools,body.vnight .ipobar{display:none!important}
 .nightv{display:none;padding:0 24px 24px}body.vnight .nightv{display:block}
 .nightv iframe{display:block;width:100%;max-width:1000px;margin:0 auto;border:0;min-height:480px;background:transparent}
 @media(max-width:700px){.nightv{padding:0 0 16px}}
+body.vls main,body.vls .tools,body.vls .ipobar{display:none!important}
+.lsv{display:none;padding:0 24px 24px}body.vls .lsv{display:block}
+.lsv iframe{display:block;width:100%;max-width:1240px;margin:0 auto;border:0;min-height:900px;background:transparent}
+@media(max-width:700px){.lsv{padding:0 0 16px}}
 .livev{display:none;padding:0 24px 24px}
 body.vlive .livev{display:block}
 .livev iframe{display:block;width:100%;max-width:1240px;border:0;border-radius:12px;min-height:600px;background:transparent}
@@ -1014,7 +1018,7 @@ html.dark .tsw{outline-color:#86efac;animation-name:tswGlowD}
 <body>
 <header>
   <div>
-    <div class="thw"><div class="vtabs"><h1 class="vt on" data-v="main">증시 주요일정</h1><h1 class="vt" data-v="live">야간선물/반도체</h1><h1 class="vt" data-v="flow">증시 자금추이</h1><h1 class="vt" data-v="adr">공포·탐욕 지수 / ADR</h1><h1 class="vt" data-v="lock">보호예수 해제</h1><h1 class="vt" data-v="subs">공모주 청약일정</h1><h1 class="vt" data-v="val">밸류에이션</h1></div><button class="tsw" id="tsw" type="button" aria-label="다크모드 전환"><span class="tl l">LIGHT<br>MODE</span><span class="tl d">DARK<br>MODE</span><span class="kn"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="#8a919c" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="#5d6470" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 14.6A8 8 0 1 1 9.4 4.5a6.4 6.4 0 0 0 10.1 10.1z"/><path d="M17 3.5v2.4M15.8 4.7h2.4M20.6 8.2v1.6M19.8 9h1.6"/></svg></span></button></div>
+    <div class="thw"><div class="vtabs"><h1 class="vt on" data-v="main">증시 주요일정</h1><h1 class="vt" data-v="live">야간선물/반도체</h1><h1 class="vt" data-v="flow">증시 자금추이</h1><h1 class="vt" data-v="adr">공포·탐욕 지수 / ADR</h1><h1 class="vt" data-v="lock">보호예수 해제</h1><h1 class="vt" data-v="subs">공모주 청약일정</h1><h1 class="vt" data-v="val">밸류에이션</h1><h1 class="vt" data-v="ls">롱숏 투표</h1></div><button class="tsw" id="tsw" type="button" aria-label="다크모드 전환"><span class="tl l">LIGHT<br>MODE</span><span class="tl d">DARK<br>MODE</span><span class="kn"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="#8a919c" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="#5d6470" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 14.6A8 8 0 1 1 9.4 4.5a6.4 6.4 0 0 0 10.1 10.1z"/><path d="M17 3.5v2.4M15.8 4.7h2.4M20.6 8.2v1.6M19.8 9h1.6"/></svg></span></button></div>
   </div>
   <div class="tools">
     <input id="q" placeholder="종목·키워드 검색 (예: 실적, CPI, 엔비디아)">
@@ -1046,6 +1050,7 @@ html.dark .tsw{outline-color:#86efac;animation-name:tswGlowD}
   </aside>
 </main>
 <section class="livev" id="livev"><iframe id="liveFrame" title="24시간 삼전닉스"></iframe></section>
+<section class="lsv" id="lsv"><iframe id="lsFrame" title="롱숏 투표"></iframe></section>
 <section class="nightv" id="nightv"><iframe id="nightFrame" title="코스피200 야간선물"></iframe></section>
 <section class="adrv" id="adr">
 <div class="fgrow"><div class="fg fg-kr" id="fg">
@@ -1405,7 +1410,7 @@ document.querySelectorAll('.adrv [data-r]').forEach(box=>{const rk=box.dataset.r
 
 let adrInit=false;
 window.addEventListener('resize',()=>{if(VIEW==='adr')renderAdr()});
-function setView(v){VIEW=v;document.body.classList.toggle('vadr',v==='adr');if(v==='adr'){requestAnimationFrame(()=>{if(!adrInit){adCards();adrInit=true}renderAdr();renderFG()})}document.body.classList.toggle('vsubs',v==='subs');if(v==='subs')renderSubs();document.body.classList.toggle('vval',v==='val');if(v==='val')requestAnimationFrame(renderVal);document.body.classList.toggle('vflow',v==='flow');if(v==='flow'){requestAnimationFrame(renderFlow)}document.querySelectorAll('.vt').forEach(b=>b.classList.toggle('on',b.dataset.v===v));document.body.classList.toggle('vlock',v==='lock');document.body.classList.toggle('vlive',v==='live');if(v==='live')liveStart();document.body.classList.toggle('vnight',v==='night');if(v==='night')nightStart();document.title=(v==='lock'?'보호예수 해제 일정':v==='flow'?'증시 자금추이':v==='subs'?'공모주 청약일정':v==='val'?'밸류에이션':v==='adr'?'공포·탐욕 지수 / ADR':v==='live'?'야간선물/반도체':v==='night'?'코스피200 야간선물':'증시 주요일정');renderGrid();renderList();try{localStorage.setItem('view',v)}catch(e){}}
+function setView(v){VIEW=v;document.body.classList.toggle('vadr',v==='adr');if(v==='adr'){requestAnimationFrame(()=>{if(!adrInit){adCards();adrInit=true}renderAdr();renderFG()})}document.body.classList.toggle('vsubs',v==='subs');if(v==='subs')renderSubs();document.body.classList.toggle('vval',v==='val');if(v==='val')requestAnimationFrame(renderVal);document.body.classList.toggle('vflow',v==='flow');if(v==='flow'){requestAnimationFrame(renderFlow)}document.querySelectorAll('.vt').forEach(b=>b.classList.toggle('on',b.dataset.v===v));document.body.classList.toggle('vlock',v==='lock');document.body.classList.toggle('vlive',v==='live');if(v==='live')liveStart();document.body.classList.toggle('vls',v==='ls');if(v==='ls')lsStart();document.body.classList.toggle('vnight',v==='night');if(v==='night')nightStart();document.title=(v==='lock'?'보호예수 해제 일정':v==='flow'?'증시 자금추이':v==='subs'?'공모주 청약일정':v==='val'?'밸류에이션':v==='adr'?'공포·탐욕 지수 / ADR':v==='live'?'야간선물/반도체':v==='ls'?'롱숏 투표':v==='night'?'코스피200 야간선물':'증시 주요일정');renderGrid();renderList();try{localStorage.setItem('view',v)}catch(e){}}
 document.querySelectorAll('.vt').forEach(b=>b.onclick=()=>setView(b.dataset.v));
 const msel=document.getElementById('msel');MKEYS.forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k.replace('-','.');msel.appendChild(o)});msel.onchange=()=>goMonth(msel.value);
 
@@ -1482,6 +1487,8 @@ function nightTheme(){const f=document.getElementById('nightFrame');try{const d=
 try{new MutationObserver(nightTheme).observe(document.documentElement,{attributes:true,attributeFilter:['class']})}catch(e){}
 function nightFit(){const f=document.getElementById('nightFrame');try{const d=f.contentDocument;if(d&&d.body){f.style.height=Math.max(480,d.documentElement.scrollHeight)+'px'}}catch(e){}}
 function nightStart(){const f=document.getElementById('nightFrame');if(!f.src){f.addEventListener('load',()=>{nightTheme();nightFit();try{new ResizeObserver(nightFit).observe(f.contentDocument.body)}catch(e){}});f.src='night.html'}else nightFit()}
+function lsFit(){const f=document.getElementById('lsFrame');try{const d=f.contentDocument;if(d&&d.body)f.style.height=Math.max(900,d.documentElement.scrollHeight)+'px'}catch(e){}}
+function lsStart(){const f=document.getElementById('lsFrame');if(!f.src){f.addEventListener('load',()=>{lsFit();try{new ResizeObserver(lsFit).observe(f.contentDocument.body)}catch(e){}});f.src='longshort.html'}else lsFit()}
 function liveStart(){const f=document.getElementById('liveFrame');if(!f.src){f.addEventListener('load',()=>{liveTheme();liveFit();try{const d=f.contentDocument;new ResizeObserver(liveFit).observe(d.body)}catch(e){}});f.src='live.html'}else liveFit()}
 ;(function(){const b=document.getElementById("tsw");if(!b)return;b.onclick=()=>{const on=document.documentElement.classList.toggle("dark");try{localStorage.setItem("kant-theme",on?"dark":"light")}catch(e){}}})();
 </script>
