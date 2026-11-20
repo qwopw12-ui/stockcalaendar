@@ -50,7 +50,7 @@ h1{font-size:34px;font-weight:900;letter-spacing:-1px;margin:10px 0 4px}
 .tip{position:absolute;pointer-events:none;background:rgba(25,31,40,.92);color:#fff;border-radius:10px;padding:8px 10px;font-size:12.5px;line-height:1.5;display:none;white-space:nowrap;font-variant-numeric:tabular-nums}
 .flip .ch .nm.t:after{content:"위아래 뒤집음";margin-left:8px;font-size:11.5px;font-weight:800;color:#fff;background:#7048e8;border-radius:6px;padding:3px 7px;vertical-align:2px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:820px){.grid2{grid-template-columns:1fr}h1{font-size:27px}.btn b{font-size:22px}.cv canvas{height:280px}}
+
 .foot{margin-top:24px;font-size:12px;color:var(--muted);text-align:center}
 </style></head><body><div class="wrap">
 <div class="card vote">
@@ -157,8 +157,8 @@ function chart(el,name,rows,dec,unit,flip){
  cv.addEventListener('mouseleave',()=>{hx=null;draw()});cv.addEventListener('dblclick',()=>{cnt=DEF;s0=N-DEF;clamp();draw()});
  let tt=null;
  cv.addEventListener('touchstart',e=>{const t=e.touches;if(t.length===2){tt={d:Math.abs(t[0].clientX-t[1].clientX),c:cnt,s:s0,m:(t[0].clientX+t[1].clientX)/2}}else tt={x:t[0].clientX,s:s0,hx:true}},{passive:true});
- cv.addEventListener('touchmove',e=>{const t=e.touches,rc=cv.getBoundingClientRect();if(t.length===2&&tt&&tt.d){e.preventDefault();const d=Math.abs(t[0].clientX-t[1].clientX)||1,r0=(tt.m-rc.left-G.x0)/(G.x1-G.x0),at=tt.s+tt.c*r0;cnt=Math.round(tt.c*tt.d/d);clamp();s0=at-cnt*r0;clamp();hx=null;draw()}
-  else if(t.length===1&&tt&&tt.x!=null){const dx=t[0].clientX-tt.x;if(Math.abs(dx)>8){e.preventDefault();s0=tt.s-dx/G.st;clamp();hx=null}else hx=t[0].clientX-rc.left;draw()}},{passive:false});
+ cv.addEventListener('touchmove',e=>{const t=e.touches,rc=cv.getBoundingClientRect();if(t.length===2&&tt&&tt.d){e.preventDefault();const d=Math.abs(t[0].clientX-t[1].clientX)||1,r0=((tt.m-rc.left)/(window.LSS||1)-G.x0)/(G.x1-G.x0),at=tt.s+tt.c*r0;cnt=Math.round(tt.c*tt.d/d);clamp();s0=at-cnt*r0;clamp();hx=null;draw()}
+  else if(t.length===1&&tt&&tt.x!=null){const dx=(t[0].clientX-tt.x)/(window.LSS||1);if(Math.abs(dx)>8){e.preventDefault();s0=tt.s-dx/G.st;clamp();hx=null}else hx=t[0].clientX-rc.left;draw()}},{passive:false});
  cv.addEventListener('touchend',()=>{tt=null;hx=null;draw()});
  const sync=()=>{el.querySelectorAll('.mal button').forEach(b=>b.classList.toggle('on',!!MAON[b.dataset.k]));draw()};CHARTS.push({sync});
  draw();addEventListener('resize',draw);new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['class']})}
@@ -168,4 +168,26 @@ const SP=[['kospi','코스피','KOSPI',2,'',false],['nasdaq','나스닥','NASDAQ
  if(window.parent!==window)setTimeout(()=>parent.postMessage({lsH:document.documentElement.scrollHeight},'*'),300)})();
 // 사이트 다크모드 따라가기
 (function(){try{const P=parent.document.documentElement,f=()=>document.documentElement.classList.toggle('kdark',P.classList.contains('dark')||P.classList.contains('kdark'));f();new MutationObserver(f).observe(P,{attributes:true,attributeFilter:['class']})}catch(e){}})();
-</script></body></html>
+</script><script>
+// 화면이 좁아져도 PC 화면 배치 그대로 — 폭이 1080px보다 작으면 전체를 같은 비율로 축소
+(function(){
+  const D = 1080, wrap = document.querySelector('.wrap'), outer = document.createElement('div');
+  wrap.before(outer); outer.appendChild(wrap);
+  let on = false;
+  const fit = () => {
+    const w = document.documentElement.clientWidth;
+    if (w < D) {
+      const s = w / D; window.LSS = s;
+      if (!on) { on = true; Object.assign(wrap.style, { width:'1044px', maxWidth:'none', margin:'0', boxSizing:'content-box', transformOrigin:'0 0' }); outer.style.overflow = 'hidden'; }
+      wrap.style.transform = `scale(${s})`;
+      outer.style.height = Math.ceil(wrap.offsetHeight * s) + 'px';
+    } else if (on) {
+      on = false; window.LSS = 1; ['width','maxWidth','margin','boxSizing','transformOrigin','transform'].forEach(k => wrap.style[k] = '');
+      outer.style.height = ''; outer.style.overflow = '';
+    }
+  };
+  fit(); window.addEventListener('resize', fit);
+  try{ new ResizeObserver(fit).observe(wrap); }catch(e){}
+})();
+</script>
+</body></html>
