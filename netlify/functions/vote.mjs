@@ -7,14 +7,15 @@ const KST = 9 * 3600e3, DAY = 864e5;
 const HOL = ["2026-12-25", "2026-12-31", "2027-01-01", "2027-02-08", "2027-02-09", "2027-03-01", "2027-03-03"];
 const ymd = (d) => d.toISOString().slice(0, 10);
 const isTD = (d) => { const w = d.getUTCDay(); return w > 0 && w < 6 && !HOL.includes(ymd(d)); };
-// 투표 대상: 마감(대상 거래일 전날 23:30 KST)이 아직 안 지난 가장 가까운 거래일
+// 투표 대상: 마감(대상 거래일 바로 앞 거래일 23:30 KST — 주말·휴장일 건너뜀)이 아직 안 지난 가장 가까운 거래일
+const prevTD = (t) => { let p = new Date(t.getTime() - DAY); while (!isTD(p)) p = new Date(p.getTime() - DAY); return p; };
 function target(nowMs = Date.now()) {
   const k = new Date(nowMs + KST);
   let t = new Date(Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate()));
   for (;;) {
     t = new Date(t.getTime() + DAY);
     if (!isTD(t)) continue;
-    const deadline = t.getTime() - DAY + 23.5 * 3600e3;          // KST 기준 시각(UTC로 표현)
+    const deadline = prevTD(t).getTime() + 23.5 * 3600e3;          // KST 기준 시각(UTC로 표현)
     if (k.getTime() < deadline) return { day: ymd(t), deadline: new Date(deadline - KST).toISOString() };
   }
 }

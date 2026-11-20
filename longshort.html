@@ -83,12 +83,12 @@ const HOL=['2026-12-25','2026-12-31','2027-01-01','2027-02-08','2027-02-09','202
 const kst=()=>new Date(Date.now()+9*3600e3);
 const ymd=d=>`${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
 const isTD=d=>{const w=d.getUTCDay();return w>0&&w<6&&!HOL.includes(ymd(d))};
-// 투표 대상: 마감(대상 거래일 전날 23:30)이 아직 안 지난 가장 가까운 거래일
+// 투표 대상: 마감(대상 거래일 바로 앞 거래일 23:30)이 아직 안 지난 가장 가까운 거래일
 function target(){const now=kst();let t=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()));
- for(;;){t=new Date(t.getTime()+864e5);if(!isTD(t))continue;if(now<new Date(t.getTime()-864e5+23.5*3600e3))return t}}
+ for(;;){t=new Date(t.getTime()+864e5);if(!isTD(t))continue;let p=new Date(t.getTime()-864e5);while(!isTD(p))p=new Date(p.getTime()-864e5);if(now<new Date(p.getTime()+23.5*3600e3))return t}}
 const T=target(),DAY=ymd(T),DW='일월화수목금토'[T.getUTCDay()];
 document.getElementById('q').textContent=`${T.getUTCMonth()+1}월 ${T.getUTCDate()}일(${DW}) 국내증시, 롱? 숏?`;
-const DL=new Date(T.getTime()-864e5);document.getElementById('meta').textContent=`코스피 기준 · ${DL.getUTCMonth()+1}/${DL.getUTCDate()}(${'일월화수목금토'[DL.getUTCDay()]}) 23:30 마감`;
+let DL=new Date(T.getTime()-864e5);while(!isTD(DL))DL=new Date(DL.getTime()-864e5);document.getElementById('meta').textContent=`코스피 기준 · ${DL.getUTCMonth()+1}/${DL.getUTCDate()}(${'일월화수목금토'[DL.getUTCDay()]}) 23:30 마감`;
 /* ---------- 투표 (서버: /api/vote) ---------- */
 let mySide=null,L=0,S=0,DAYK=DAY;
 const VID=(()=>{try{let v=localStorage.getItem('lsvid');if(!v){v=[...crypto.getRandomValues(new Uint8Array(12))].map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,24);localStorage.setItem('lsvid',v)}return v}catch(e){return 'x'+Math.random().toString(36).slice(2).padEnd(20,'0')}})();
