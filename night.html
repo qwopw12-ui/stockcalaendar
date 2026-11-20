@@ -35,16 +35,15 @@
 <div class="wrap">
   <div class="card" id="card">
     <div id="chart"></div>
-    <div class="head"><div class="name">KOSPI200 야간선물</div><div class="px" id="px">--</div></div>
+    <div class="head"><div class="name">KOSPI200 야간 추정지수 <span style="font-weight:500;opacity:.8">· 칸트 자체 산출</span></div><div class="px" id="px">--</div></div>
     <div class="tag" id="tag">연결 중…</div>
     <div class="overlay" id="overlay"><div><b id="ovHead">⏳ 불러오는 중</b><span id="ovMsg"></span></div></div>
   </div>
 </div>
 
 <script>
-// 데이터: 한국투자증권 KIS Open API — KRX 야간선물 실시간 체결(H0MFCNT0), 5초마다 갱신
-// 기준선/색: 전일(주간장) 종가 — 위는 빨강, 아래는 파랑. 차트는 외부 라이브러리 없이 캔버스로 직접 그림
-const POLL_MS = 5000;
+// 데이터: Hyperliquid xyz 퍼페추얼(EWY·XYZ100·KR200) — 칸트 야간 추정지수, 3초마다 갱신 (실제 야간선물 시세 아님)
+// 기준선/색: 15:45 기준값 — 위는 빨강, 아래는 파랑. 차트는 외부 라이브러리 없이 캔버스로 직접 그림
 const KST = 9 * 3600;
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, '0');
@@ -130,7 +129,7 @@ function draw() {
   // 23:30(서머타임 22:30) 미국 정규장 시작, 06:00 한국 야간선물 종료
   markLine(ctx, X, usOpenAt(S.start), '미국 정규장 시작', '#7048e8', x0, y0, y1);
   markLine(ctx, X, S.kEnd, '한국 야간선물 종료', '#f08c00', x0, y0, y1);
-  // 전일 종가 점선
+  // 기준값 점선
   const yb = base != null ? Math.round(Y(base)) + .5 : null;
   if (yb != null) {
     ctx.setLineDash([4, 4]); ctx.strokeStyle = C.base;
@@ -171,7 +170,7 @@ function draw() {
     const near = ys.filter((_, i) => xs[i] > x1 - 150);
     const above = !near.length || Math.min(...near) > yb - 16;
     ctx.textBaseline = above ? 'bottom' : 'top';
-    ctx.fillText('전일 종가 ' + f2(base), x1 - 4, above ? yb - 4 : yb + 4);
+    ctx.fillText('기준(15:45) ' + f2(base), x1 - 4, above ? yb - 4 : yb + 4);
   }
 
   // 현재가 점 + 라벨
@@ -215,34 +214,66 @@ function overlay(show, head = '', msg = '') {
   $('overlay').style.display = show ? 'flex' : 'none'; $('ovHead').textContent = head; $('ovMsg').textContent = msg;
 }
 
-let lastKey = '';
+// ===== 칸트 야간 추정지수 =====
+// 추정 = 기준값 × exp(β₁·ln(EWY/EWY₀) + β₂·ln(NDX/NDX₀)), 0.05 단위 반올림
+// 기준 시각: 가장 최근 평일 15:45(주간장 마감). 기준값 = 그 시각 Hyperliquid KR200
+const API = 'https://api.hyperliquid.xyz/info', B_E = 0.96, B_N = 0.11, MIN = 60;
+const post = b => fetch(API, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(b) }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+const tick = x => Math.round(x / 0.05) * 0.05;
+function refTime(now) {                       // 초 단위
+  const d = new Date((now + KST) * 1000); d.setUTCHours(15, 45, 0, 0);
+  let t = d.getTime() / 1000 - KST; if (t > now) t -= 86400;
+  while (true) { const wd = new Date((t + KST) * 1000).getUTCDay(); if (wd >= 1 && wd <= 5) break; t -= 86400; }
+  return t;
+}
+async function candles(coin, from, to) {
+  const d = await post({ type:'candleSnapshot', req:{ coin, interval:'1m', startTime:from * 1000, endTime:to * 1000 } });
+  return Array.isArray(d) ? d.map(k => [k.t / 1000 + MIN, +k.c]) : [];   // 봉 마감 시각 기준
+}
+function priceAt(arr, t) { let p = null; for (const [x, v] of arr) { if (x <= t) p = v; else break; } return p; }
+let REF = null, ref = {}, busy = false;
+const est = (e, n) => tick(S.base * Math.exp(B_E * Math.log(e / ref.e) + B_N * Math.log(n / ref.n)));
+
+async function init() {
+  const now = Date.now() / 1000; REF = refTime(now);
+  const start = REF + 135 * MIN, kEnd = REF + (14 * 60 + 15) * MIN, to = Math.min(now, kEnd);
+  const [E, N, K] = await Promise.all(['xyz:EWY', 'xyz:XYZ100', 'xyz:KR200'].map(c => candles(c, REF - 30 * MIN, to)));
+  ref = { e: priceAt(E, REF), n: priceAt(N, REF), k: priceAt(K, REF) };
+  if (!ref.e || !ref.n || !ref.k) throw new Error('기준 시각(15:45) 시세 없음');
+  S = { start, kEnd, end: kEnd + 3600, base: ref.k, points: [], live: false };   // 축은 06:59까지(데이터는 06:00까지)
+  for (const [t, v] of E) { if (t < start || t > to) continue; const n = priceAt(N, t); if (n) S.points.push([t, est(v, n)]); }
+}
+
 async function poll() {
-  let st;
-  try { st = await (await fetch('/api/kis-night', { cache: 'no-store' })).json(); }
-  catch (e) { setTag('⚠ 서버 응답 없음', 'error'); return; }
-  if (st.start == null) { setTag('⚠ ' + (st.error || '오류'), 'error'); overlay(true, '⚠ 데이터 오류', st.error || ''); return; }
+  if (busy) return; busy = true;
+  try {
+    const now = Date.now() / 1000;
+    if (REF == null || refTime(now) !== REF) await init();
+    const m = await post({ type:'allMids', dex:'xyz' });
+    const e = +m['xyz:EWY'], n = +m['xyz:XYZ100'], t = Date.now() / 1000;
+    const y = est(e, n), open = t >= S.start && t <= S.kEnd;
+    S.live = open;
+    if (open) S.points.push([t, y]);
+    redraw();
 
-  const key = JSON.stringify([st.start, st.points.length, st.last, st.base, st.live]);
-  if (key !== lastKey) { lastKey = key; S = { ...st, end: st.end + 3600, kEnd: st.end }; redraw(); }   // 축은 06:59까지(데이터는 06:00까지, 이후 빈칸)
-
-  // 현재가 (전일 종가 대비)
-  if (st.last != null) {
-    const c = st.chg ?? (st.base ? st.last - st.base : 0);
-    const r = st.rate ?? (st.base ? c / st.base * 100 : 0);
-    const cls = c > 0 ? 'up' : c < 0 ? 'down' : 'flat', sg = c > 0 ? '+' : '';
-    $('px').innerHTML = `${f2(st.last)}<span class="chg ${cls}">${sg}${f2(c)} (${sg}${Number(r).toFixed(2)}%)</span>`;
-  }
-
-  if (st.points.length) overlay(false);
-  else if (st.error) overlay(true, '⚠ 연결 문제', st.error);
-  else if (st.live) overlay(true, '⏳ 체결 대기 중', '18:00 개장 후 첫 체결이 들어오면 차트가 그려집니다');
-  else overlay(true, '장 종료', '평일 18:00에 새 차트가 시작됩니다');
-
-  if (st.error) setTag('⚠ ' + st.error, 'error');
-  else setTag(st.live ? '● 실시간' : '장 종료', st.live ? 'live' : '');
+    // 장중엔 현재 추정값, 장외엔 차트 마지막 값
+    const val = open ? y : (S.points.length ? S.points[S.points.length - 1][1] : null);
+    if (val != null) {
+      const c = val - S.base, r = c / S.base * 100;
+      const cls = c > 0 ? 'up' : c < 0 ? 'down' : 'flat', sg = c > 0 ? '+' : '';
+      $('px').innerHTML = `${f2(val)}<span class="chg ${cls}">${sg}${f2(c)} (${sg}${r.toFixed(2)}%)</span>`;
+    }
+    if (S.points.length) overlay(false);
+    else if (t < S.start) overlay(true, '⏳ 개장 전', '18:00부터 추정지수 차트가 그려집니다');
+    else overlay(true, '장 종료', '평일 18:00에 새 차트가 시작됩니다');
+    setTag(open ? '● 실시간 · 3초' : '장 종료', open ? 'live' : '');
+  } catch (err) {
+    setTag('⚠ 연결 오류 — 재시도 중', 'error');
+    if (!S) overlay(true, '⚠ 데이터 오류', String(err.message || err));
+  } finally { busy = false; }
 }
 poll();
-setInterval(poll, POLL_MS);
+setInterval(poll, 3000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 </script>
 </body>

@@ -122,7 +122,7 @@
   <div class="sec-h">미국 반도체 <small>정규장 종가 대비 · 달러</small></div>
   <div class="grid" id="usgrid"></div>
   <div class="sec-h">코스피200 야간선물</div>
-  <iframe id="nightFrame" class="nightf" title="코스피200 야간선물" src="night.html"></iframe>
+  <iframe id="nightFrame" class="nightf" title="코스피200 야간 추정지수" src="night.html"></iframe>
   <div class="sec-h">나스닥100</div>
   <iframe class="nightf usf" title="나스닥100" src="usfut.html?coin=xyz:XYZ100&name=NASDAQ100"></iframe>
   <div class="sec-h">S&amp;P500</div>
@@ -456,10 +456,10 @@ refreshSox(); setInterval(refreshSox, 30000);
     <div class="card" id="c-night">
       <div class="head">
         <div class="logo fb" style="--c:#0b3d91"><span style="font-size:12px">K200</span></div>
-        <div class="name">야간선물 <span style="font-size:15px;color:var(--muted);font-weight:600">KOSPI200</span></div>
+        <div class="name">야간 추정 <span style="font-size:15px;color:var(--muted);font-weight:600">KOSPI200</span></div>
       </div>
       <div class="price"><span class="v">—</span><span class="u">pt</span></div>
-      <div class="chg"><span class="lbl">전일 종가 대비</span><span class="amt"></span><span class="sep">|</span><span class="pct"></span></div>
+      <div class="chg"><span class="lbl">15:45 대비</span><span class="amt"></span><span class="sep">|</span><span class="pct"></span></div>
       <div class="rows"><div class="row"><span>거래시간</span><span>18:00 ~ 익일 06:00</span></div></div>
     </div>`);
   const f = document.getElementById('nightFrame'); if (!f) return;
